@@ -6,19 +6,12 @@
 *.suo
 *.cache
 
-## App runtime data (keep folder, ignore contents)
-App/data/*
+## Published app output (rebuild via scripts\publish-*.bat)
+App/**
+!App/data/
 !App/data/.gitkeep
 
-## Published binaries in App/ (rebuild via scripts\publish-portable.bat)
-App/*.dll
-App/*.exe
-App/*.pdb
-App/*.json
-App/*.xml
-!App/data/
-
-## Models (too large for git — keep on drive)
+## Models (large — keep on drive only)
 Models/fast/*
 Models/quality/*
 !Models/fast/.gitkeep
@@ -36,5 +29,8 @@ Runtime/llama/*
 *.db-journal
 App/data/prompt-cache/
 App/data/logs/
+App/data/*.zip
+App/data/update-extract/
+App/data/apply-update.bat
 .DS_Store
 Thumbs.db
