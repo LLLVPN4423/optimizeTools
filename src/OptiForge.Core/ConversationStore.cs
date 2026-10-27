@@ -62,7 +62,8 @@ public sealed class ConversationStore
     public void Save(Conversation c)
     {
         c.UpdatedAt = DateTimeOffset.UtcNow;
-        if (string.IsNullOrWhiteSpace(c.Title) || c.Title == "New chat")
+        if (!c.TitleManual &&
+            (string.IsNullOrWhiteSpace(c.Title) || c.Title == "New chat"))
         {
             var firstUser = c.Messages.FirstOrDefault(m => m.Role == "user");
             if (firstUser is not null)
@@ -72,6 +73,19 @@ public sealed class ConversationStore
         var path = PathFor(c.Id);
         File.WriteAllText(path, JsonSerializer.Serialize(c, JsonOptions));
         UpsertIndex(c);
+    }
+
+    public bool Rename(string id, string newTitle)
+    {
+        var c = Get(id);
+        if (c is null) return false;
+        var t = newTitle.Trim();
+        if (t.Length == 0) return false;
+        if (t.Length > 80) t = t[..80];
+        c.Title = t;
+        c.TitleManual = true;
+        Save(c);
+        return true;
     }
 
     public bool Delete(string id)
@@ -89,7 +103,11 @@ public sealed class ConversationStore
         var c = Get(id);
         if (c is null) return;
         c.Pinned = pinned;
-        Save(c);
+        // Avoid auto-title side effects when only pinning
+        c.UpdatedAt = DateTimeOffset.UtcNow;
+        var path = PathFor(c.Id);
+        File.WriteAllText(path, JsonSerializer.Serialize(c, JsonOptions));
+        UpsertIndex(c);
     }
 
     public IReadOnlyList<ConversationIndexEntry> Search(string query)

@@ -165,18 +165,14 @@ public partial class MainWindow : Window
 
     private void NavigateTo(string tag)
     {
-        WorkspaceTitleText.Text = tag switch
-        {
-            "AI" => "Chat",
-            "Dashboard" => "Monitor",
-            _ => tag
-        };
         for (var i = 0; i < MainTabs.Items.Count; i++)
         {
             if (MainTabs.Items[i] is TabItem { Tag: string t } &&
                 string.Equals(t, tag, StringComparison.OrdinalIgnoreCase))
             {
                 MainTabs.SelectedIndex = i;
+                if (tag != "AI" && ChatTitleBox is not null && _activeConversation is null)
+                    ChatTitleBox.Text = tag;
                 return;
             }
         }
@@ -193,14 +189,27 @@ public partial class MainWindow : Window
         BackendBadgeText.Text = $"{_settings.AiBackend} ? {_governor.Profile}";
     }
 
+    private bool _suppressConvSelection;
+
     private void RefreshConversationList(string? search = null)
     {
-        _convItems.Clear();
-        var items = string.IsNullOrWhiteSpace(search)
-            ? _conversations.List()
-            : _conversations.Search(search);
-        foreach (var e in items)
-            _convItems.Add(e);
+        var keepId = _activeConversation?.Id;
+        _suppressConvSelection = true;
+        try
+        {
+            _convItems.Clear();
+            var items = string.IsNullOrWhiteSpace(search)
+                ? _conversations.List()
+                : _conversations.Search(search);
+            foreach (var e in items)
+                _convItems.Add(e);
+            if (keepId is not null)
+                SelectConversationInList(keepId);
+        }
+        finally
+        {
+            _suppressConvSelection = false;
+        }
     }
 
     private void EnsureActiveConversation()
@@ -237,12 +246,18 @@ public partial class MainWindow : Window
         AiChatBox.Text = sb.Length == 0
             ? "New conversation. Pick a mode, Start server (or LM Studio), then send.\n" + AiAssistModes.CapabilityBlurb
             : sb.ToString().Trim();
-        WorkspaceTitleText.Text = c.Title;
+        ChatTitleBox.Text = c.Title;
     }
 
     private void PersistActiveConversation()
     {
         if (_activeConversation is null) return;
+        // Don't wipe a saved chat if UI history was cleared accidentally while on another page
+        if (_aiHistory.Count == 0 && _activeConversation.Messages.Count > 0 &&
+            (AiChatBox.Text?.StartsWith("New conversation", StringComparison.Ordinal) != true) &&
+            string.IsNullOrWhiteSpace(AiChatBox.Text))
+            return;
+
         _activeConversation.Messages = _aiHistory.Select(h => new ChatMessage
         {
             Role = h.role,
@@ -252,7 +267,7 @@ public partial class MainWindow : Window
         _conversations.Save(_activeConversation);
         RefreshConversationList(ConvSearchBox.Text);
         SelectConversationInList(_activeConversation.Id);
-        WorkspaceTitleText.Text = _activeConversation.Title;
+        ChatTitleBox.Text = _activeConversation.Title;
     }
 
     private void NewChat_Click(object sender, RoutedEventArgs e)
@@ -260,15 +275,18 @@ public partial class MainWindow : Window
         PersistActiveConversation();
         _activeConversation = _conversations.Create();
         _aiHistory.Clear();
-        AiChatBox.Text = "New conversation ready.";
+        AiChatBox.Text = "New conversation ready. Type below and send.";
         AiPromptBox.Clear();
+        ChatTitleBox.Text = _activeConversation.Title;
         RefreshConversationList();
         SelectConversationInList(_activeConversation.Id);
         NavigateTo("AI");
+        AiPromptBox.Focus();
     }
 
     private void ConvList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_suppressConvSelection) return;
         if (ConvList.SelectedItem is not ConversationIndexEntry entry) return;
         if (_activeConversation?.Id == entry.Id) return;
         PersistActiveConversation();
@@ -281,15 +299,94 @@ public partial class MainWindow : Window
     private void ConvSearchBox_TextChanged(object sender, TextChangedEventArgs e)
         => RefreshConversationList(ConvSearchBox.Text);
 
+    private void ConvList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        => RenameChat_Click(sender, e);
+
+    private void ConvList_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F2)
+        {
+            e.Handled = true;
+            RenameChat_Click(sender, e);
+        }
+        else if (e.Key == Key.Delete)
+        {
+            e.Handled = true;
+            DeleteChat_Click(sender, e);
+        }
+    }
+
+    private void RenameChat_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeConversation is null) return;
+        var current = _activeConversation.Title;
+        var input = PromptDialog.Ask("Rename chat", "New title:", current);
+        if (input is null) return;
+        if (!_conversations.Rename(_activeConversation.Id, input))
+        {
+            MessageBox.Show("Title cannot be empty.", "OptiForge", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        _activeConversation = _conversations.Get(_activeConversation.Id);
+        ChatTitleBox.Text = _activeConversation?.Title ?? input;
+        RefreshConversationList(ConvSearchBox.Text);
+        StatusText.Text = "Renamed";
+    }
+
+    private void ChatTitleBox_LostFocus(object sender, RoutedEventArgs e)
+        => CommitTitleFromBox();
+
+    private void ChatTitleBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            CommitTitleFromBox();
+            AiPromptBox.Focus();
+        }
+    }
+
+    private void CommitTitleFromBox()
+    {
+        if (_activeConversation is null) return;
+        var t = ChatTitleBox.Text?.Trim() ?? "";
+        if (t.Length == 0 || t == _activeConversation.Title) return;
+        if (_conversations.Rename(_activeConversation.Id, t))
+        {
+            _activeConversation = _conversations.Get(_activeConversation.Id);
+            RefreshConversationList(ConvSearchBox.Text);
+            StatusText.Text = "Title saved";
+        }
+    }
+
+    private void PinChat_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeConversation is null) return;
+        var next = !_activeConversation.Pinned;
+        _conversations.SetPinned(_activeConversation.Id, next);
+        _activeConversation = _conversations.Get(_activeConversation.Id);
+        RefreshConversationList(ConvSearchBox.Text);
+        StatusText.Text = next ? "Pinned" : "Unpinned";
+    }
+
     private void DeleteChat_Click(object sender, RoutedEventArgs e)
     {
         if (_activeConversation is null) return;
+        var title = _activeConversation.Title;
         var id = _activeConversation.Id;
-        if (MessageBox.Show("Delete this conversation?", "OptiForge", MessageBoxButton.YesNo, MessageBoxImage.Warning)
-            != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(
+                $"Delete chat \"{title}\"?\nThis cannot be undone.",
+                "OptiForge",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+
         _conversations.Delete(id);
         _activeConversation = null;
+        _aiHistory.Clear();
         EnsureActiveConversation();
+        NavigateTo("AI");
+        StatusText.Text = "Chat deleted";
     }
 
     private void SelectResourceProfileCombo(string profile)
