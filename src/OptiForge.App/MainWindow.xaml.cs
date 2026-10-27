@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private readonly UpdateChecker _updates = new();
     private readonly DispatcherTimer _timer;
     private readonly ObservableCollection<CleanRow> _cleanRows = [];
+    private readonly ObservableCollection<Playbook> _playbooks = [];
     private bool _cleanBusy;
 
     public MainWindow()
@@ -50,6 +51,14 @@ public partial class MainWindow : Window
             });
         }
         CleanList.ItemsSource = _cleanRows;
+
+        foreach (var pb in new PlaybookStore(_paths).LoadAll())
+            _playbooks.Add(pb);
+        PlaybookList.ItemsSource = _playbooks;
+        if (_playbooks.Count > 0)
+            PlaybookList.SelectedIndex = 0;
+
+        VersionText.Text = "Version: " + _updates.CurrentVersion;
 
         _ = RefreshAiStatusAsync();
         RefreshMonitor();
@@ -241,6 +250,20 @@ public partial class MainWindow : Window
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.0} KB";
         if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024):0.0} MB";
         return $"{bytes / (1024.0 * 1024 * 1024):0.00} GB";
+    }
+
+    private void PlaybookList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (PlaybookList.SelectedItem is not Playbook pb)
+        {
+            PlaybookTitleText.Text = "";
+            PlaybookStepsText.Text = "";
+            return;
+        }
+
+        PlaybookTitleText.Text = pb.Title;
+        var i = 1;
+        PlaybookStepsText.Text = string.Join("\n\n", pb.Steps.Select(s => $"{i++}. {s}"));
     }
 
     private void SaveSettings_Click(object sender, RoutedEventArgs e)

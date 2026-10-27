@@ -42,8 +42,8 @@ OptiForge/
 | 3 | Disk clean + dry-run | done |
 | 4 | RAM trim | done |
 | 5 | llama.cpp chat + cache | done |
-| 6 | Knowledge playbooks UI | planned |
-| 7 | GitHub self-update | stub |
+| 6 | Knowledge playbooks UI | done |
+| 7 | GitHub Releases update check | done |
 | 8 | Bundle polish ≤10GB | planned |
 
 ## Requirements

@@ -164,10 +164,30 @@
         </Grid>
       </TabItem>
 
+      <TabItem Header="Tips">
+        <Grid Margin="8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240"/>
+            <ColumnDefinition Width="*"/>
+          </Grid.ColumnDefinitions>
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Top" Text="Playbooks" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <ListBox x:Name="PlaybookList" Background="#FF1C212B" Foreground="#FFE8EAED"
+                     BorderBrush="#FF3D4450" DisplayMemberPath="Title"
+                     SelectionChanged="PlaybookList_SelectionChanged"/>
+          </DockPanel>
+          <StackPanel Grid.Column="1" Margin="12,0,0,0">
+            <TextBlock x:Name="PlaybookTitleText" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock x:Name="PlaybookStepsText" Margin="0,12,0,0" TextWrapping="Wrap" Opacity="0.9"/>
+          </StackPanel>
+        </Grid>
+      </TabItem>
+
       <TabItem Header="Settings">
         <StackPanel Margin="8">
           <TextBlock Text="Settings" FontSize="16" FontWeight="SemiBold"/>
           <TextBlock x:Name="SettingsPathText" Margin="0,8,0,0" Opacity="0.7" TextWrapping="Wrap"/>
+          <TextBlock x:Name="VersionText" Margin="0,4,0,0" Opacity="0.7"/>
           <Button Content="Save settings" Click="SaveSettings_Click" Margin="0,12,0,0" HorizontalAlignment="Left"/>
           <Button Content="Check updates" Click="CheckUpdates_Click" Margin="0,8,0,0" HorizontalAlignment="Left"/>
           <TextBlock x:Name="UpdateText" Margin="0,12,0,0" TextWrapping="Wrap" Opacity="0.8"/>

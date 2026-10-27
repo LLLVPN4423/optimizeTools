@@ -1,0 +1,11 @@
+{
+  "id": "portable-ai",
+  "title": "Chạy AI trên ổ rời",
+  "steps": [
+    "Copy llama-server.exe vào Runtime/llama (từ llama.cpp releases).",
+    "Thả GGUF Q4_K_M ~3B vào Models/fast (vd. Qwen2.5-3B-Instruct).",
+    "Dùng USB 3 / SSD gắn ngoài — HDD USB 2 load model rất chậm.",
+    "Trong app: tab AI → Start server → đợi Ready → Send prompt.",
+    "Bật Use prompt cache để câu hỏi trùng không gọi model lại."
+  ]
+}
