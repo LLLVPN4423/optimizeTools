@@ -115,27 +115,36 @@ public sealed class AiBootstrapper
     {
         _http.DefaultRequestHeaders.Accept.Clear();
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
-        using var resp = await _http.GetAsync("https://api.github.com/repos/ggml-org/llama.cpp/releases/latest", ct);
+
+        // "latest" tag may be a meta release without binaries; scan recent releases instead.
+        using var resp = await _http.GetAsync(
+            "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=8", ct);
         if (!resp.IsSuccessStatusCode) return null;
 
         await using var stream = await resp.Content.ReadAsStreamAsync(ct);
         using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-        if (!doc.RootElement.TryGetProperty("assets", out var assets)) return null;
 
         string? best = null;
-        foreach (var asset in assets.EnumerateArray())
+        foreach (var release in doc.RootElement.EnumerateArray())
         {
-            var name = asset.GetProperty("name").GetString() ?? "";
-            var url = asset.GetProperty("browser_download_url").GetString();
-            if (url is null) continue;
-            var lower = name.ToLowerInvariant();
-            if (!lower.EndsWith(".zip")) continue;
-            // Prefer cuda-less / cpu win x64 naming variants used by llama.cpp
-            if (lower.Contains("win") && (lower.Contains("x64") || lower.Contains("avx")) &&
-                !lower.Contains("cuda") && !lower.Contains("vulkan"))
-                return url;
-            if (lower.Contains("win") && lower.Contains("x64"))
-                best ??= url;
+            if (!release.TryGetProperty("assets", out var assets)) continue;
+            foreach (var asset in assets.EnumerateArray())
+            {
+                var name = asset.GetProperty("name").GetString() ?? "";
+                var url = asset.GetProperty("browser_download_url").GetString();
+                if (url is null) continue;
+                var lower = name.ToLowerInvariant();
+                if (!lower.EndsWith(".zip")) continue;
+
+                // Current naming: llama-bNNNN-bin-win-cpu-x64.zip
+                if (lower.Contains("win-cpu-x64") ||
+                    (lower.Contains("win") && lower.Contains("cpu") && lower.Contains("x64") && !lower.Contains("cuda")))
+                    return url;
+
+                if (lower.Contains("win") && lower.Contains("x64") &&
+                    !lower.Contains("cuda") && !lower.Contains("vulkan"))
+                    best ??= url;
+            }
         }
 
         return best;
