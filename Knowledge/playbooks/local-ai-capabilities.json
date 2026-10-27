@@ -1,0 +1,12 @@
+{
+  "id": "local-ai-capabilities",
+  "title": "Local AI có thể làm gì?",
+  "steps": [
+    "Model: Qwen2.5-3B-Instruct Q4 (~2GB) — chạy offline trên ổ portable, phù hợp máy ~8GB RAM.",
+    "Giỏi: hỏi đáp ngắn, giải thích dễ hiểu, dịch VI↔EN, tóm tắt, viết lại văn, checklist tối ưu PC, snippet code nhỏ.",
+    "Yếu / tránh: lý luận nhiều bước, code lớn / debug sâu, kiến thức thời sự (không có mạng), số liệu chính xác tuyệt đối.",
+    "Cách dùng nhanh: tab AI → chọn chip chế độ (Dịch / Tóm tắt / Tối ưu PC…) → Start → Gửi (Ctrl+Enter).",
+    "Bật Hội thoại khi cần hỏi tiếp cùng chủ đề; tắt nếu muốn mỗi câu độc lập + tận dụng Cache.",
+    "Trước rút ổ: Stop AI hoặc Safe eject — tránh orphan llama-server trên host."
+  ]
+}

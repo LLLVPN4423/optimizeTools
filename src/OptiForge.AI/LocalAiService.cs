@@ -38,8 +38,25 @@ public sealed class LocalAiService : IAsyncDisposable
 
     public Task StopServerAsync() => Host.StopAsync();
 
-    public Task<(bool fromCache, string response)> ChatAsync(string prompt, bool useCache = true, CancellationToken ct = default)
-        => Host.ChatAsync(prompt, Cache, useCache, ct);
+    public Task<(bool fromCache, string response)> ChatAsync(
+        string prompt,
+        bool useCache = true,
+        AiAssistMode? mode = null,
+        IReadOnlyList<(string role, string content)>? history = null,
+        CancellationToken ct = default)
+    {
+        mode ??= AiAssistModes.Default;
+        return Host.ChatAsync(
+            prompt,
+            Cache,
+            useCache,
+            systemPrompt: mode.SystemPrompt,
+            modeKey: mode.Id,
+            temperature: mode.Temperature,
+            maxTokens: mode.MaxTokens,
+            history: history,
+            ct: ct);
+    }
 
     private static string BuildMessage(string? runtime, string? model, bool running)
     {

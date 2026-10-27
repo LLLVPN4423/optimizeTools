@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- AI UX: chế độ sẵn (hỏi đáp, giải thích, dịch, tóm tắt, viết lại, tối ưu PC, code nhỏ, checklist)
+- AI chat: transcript, Ctrl+Enter, hội thoại ngắn, badge sẵn sàng, quick chips, copy/clear
+- API: system prompt + temperature/max_tokens theo mode; playbook khả năng local AI
+
 ## 0.2.1
 
 - Host impact: analyze + **Safe eject** cleanup (stop llama from this drive, remove all `OptiForge_*` QoS, clear portable update temp)

@@ -139,41 +139,75 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
-          <TextBlock Text="Local AI (llama.cpp)" FontSize="16" FontWeight="SemiBold"/>
-          <TextBlock x:Name="AiStatusText" Grid.Row="1" Margin="0,8,0,0" TextWrapping="Wrap"/>
-          <StackPanel Grid.Row="2" Margin="0,10,0,8">
+
+          <DockPanel>
+            <TextBlock Text="Local AI" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            <Border x:Name="AiReadyBadge" DockPanel.Dock="Right" CornerRadius="4" Padding="8,3"
+                    Background="#FF2A323E" VerticalAlignment="Center" Margin="8,0,0,0">
+              <TextBlock x:Name="AiReadyBadgeText" Text="Offline" FontSize="11" Opacity="0.9"/>
+            </Border>
+          </DockPanel>
+
+          <TextBlock x:Name="AiCapabilityText" Grid.Row="1" Margin="0,6,0,0" TextWrapping="Wrap"
+                     FontSize="12" Opacity="0.75"/>
+          <TextBlock x:Name="AiStatusText" Grid.Row="2" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="12" Opacity="0.85"/>
+
+          <StackPanel Grid.Row="3" Margin="0,8,0,6">
             <StackPanel Orientation="Horizontal">
-              <Button x:Name="SetupAiBtn" Content="Download AI runtime+model" Click="SetupAi_Click"
+              <Button x:Name="SetupAiBtn" Content="Download AI" Click="SetupAi_Click"
                       ToolTip="Tải llama-server + GGUF ~2GB vào ổ portable (cần mạng)"/>
-              <Button x:Name="StartAiBtn" Content="Start server" Click="StartAi_Click"/>
+              <Button x:Name="StartAiBtn" Content="Start" Click="StartAi_Click"/>
               <Button x:Name="StopAiBtn" Content="Stop" Click="StopAi_Click"/>
               <Button Content="Refresh" Click="RefreshAi_Click"/>
-              <CheckBox x:Name="UseCacheCheck" Content="Use prompt cache" IsChecked="True"
-                        Margin="12,0,0,0" VerticalAlignment="Center" Foreground="#FFE8EAED"/>
+              <CheckBox x:Name="UseCacheCheck" Content="Cache" IsChecked="True"
+                        Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#FFE8EAED"
+                        ToolTip="Lưu câu trả lời cho cùng prompt+mode"/>
+              <CheckBox x:Name="MultiTurnCheck" Content="Hội thoại" IsChecked="True"
+                        Margin="10,0,0,0" VerticalAlignment="Center" Foreground="#FFE8EAED"
+                        ToolTip="Gửi vài lượt trước để AI nhớ ngữ cảnh ngắn"/>
             </StackPanel>
             <ProgressBar x:Name="AiSetupProgress" Height="8" Margin="0,8,0,0" Minimum="0" Maximum="100" Visibility="Collapsed"/>
             <TextBlock x:Name="AiSetupDetail" Margin="0,4,0,0" Opacity="0.7" FontSize="12"/>
+
+            <DockPanel Margin="0,10,0,0">
+              <TextBlock Text="Chế độ" VerticalAlignment="Center" Opacity="0.8" Margin="0,0,8,0"/>
+              <ComboBox x:Name="AiModeCombo" Width="160" DisplayMemberPath="Title"
+                        SelectionChanged="AiModeCombo_SelectionChanged"
+                        Background="#FF1C212B" Foreground="#FFE8EAED" BorderBrush="#FF3D4450"/>
+              <TextBlock x:Name="AiModeHintText" Margin="12,0,0,0" VerticalAlignment="Center"
+                         Opacity="0.7" FontSize="12" TextWrapping="Wrap"/>
+            </DockPanel>
+            <WrapPanel x:Name="AiQuickPanel" Margin="0,8,0,0"/>
           </StackPanel>
-          <Grid Grid.Row="3">
-            <Grid.RowDefinitions>
-              <RowDefinition Height="*"/>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="1.2*"/>
-            </Grid.RowDefinitions>
+
+          <TextBox x:Name="AiChatBox" Grid.Row="4" IsReadOnly="True" AcceptsReturn="True"
+                   TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                   Background="#FF161A22" Foreground="#FFE8EAED" BorderBrush="#FF3D4450"
+                   Padding="10" FontSize="13"/>
+
+          <Grid Grid.Row="5" Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
             <TextBox x:Name="AiPromptBox" AcceptsReturn="True" TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto" Background="#FF1C212B"
-                     Foreground="#FFE8EAED" BorderBrush="#FF3D4450" Padding="8"
-                     ToolTip="Nhập câu hỏi…"/>
-            <Button Grid.Row="1" x:Name="SendAiBtn" Content="Send" Click="SendAi_Click"
-                    Margin="0,8,0,8" HorizontalAlignment="Left"/>
-            <TextBox x:Name="AiResponseBox" Grid.Row="2" IsReadOnly="True" TextWrapping="Wrap"
-                     VerticalScrollBarVisibility="Auto" Background="#FF1C212B"
-                     Foreground="#FFE8EAED" BorderBrush="#FF3D4450" Padding="8"/>
+                     MinHeight="56" MaxHeight="120" VerticalScrollBarVisibility="Auto"
+                     Background="#FF1C212B" Foreground="#FFE8EAED" BorderBrush="#FF3D4450"
+                     Padding="8" PreviewKeyDown="AiPromptBox_PreviewKeyDown"/>
+            <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Bottom">
+              <Button x:Name="SendAiBtn" Content="Gửi" Click="SendAi_Click"
+                      Margin="0,0,0,6" MinWidth="72"
+                      ToolTip="Ctrl+Enter để gửi"/>
+              <Button Content="Xóa chat" Click="ClearAiChat_Click" MinWidth="72" Margin="0,0,0,6"/>
+              <Button Content="Copy" Click="CopyAi_Click" MinWidth="72"/>
+            </StackPanel>
           </Grid>
-          <TextBlock x:Name="AiMetaText" Grid.Row="4" Opacity="0.7" FontSize="12"/>
+          <TextBlock x:Name="AiMetaText" Grid.Row="6" Margin="0,6,0,0" Opacity="0.7" FontSize="12"/>
         </Grid>
       </TabItem>
 

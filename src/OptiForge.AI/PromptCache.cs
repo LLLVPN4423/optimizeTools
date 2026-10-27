@@ -15,10 +15,10 @@ public sealed class PromptCache
         Directory.CreateDirectory(_dir);
     }
 
-    public bool TryGet(string modelKey, string prompt, out string response)
+    public bool TryGet(string modelKey, string prompt, out string response, string? modeKey = null)
     {
         response = "";
-        var path = PathFor(modelKey, prompt);
+        var path = PathFor(modelKey, prompt, modeKey);
         if (!File.Exists(path)) return false;
         try
         {
@@ -33,12 +33,13 @@ public sealed class PromptCache
         }
     }
 
-    public void Set(string modelKey, string prompt, string response)
+    public void Set(string modelKey, string prompt, string response, string? modeKey = null)
     {
-        var path = PathFor(modelKey, prompt);
+        var path = PathFor(modelKey, prompt, modeKey);
         var payload = JsonSerializer.Serialize(new
         {
             model = modelKey,
+            mode = modeKey,
             prompt,
             response,
             savedAt = DateTimeOffset.UtcNow
@@ -46,9 +47,9 @@ public sealed class PromptCache
         File.WriteAllText(path, payload);
     }
 
-    private string PathFor(string modelKey, string prompt)
+    private string PathFor(string modelKey, string prompt, string? modeKey)
     {
-        var raw = modelKey + "\n" + prompt;
+        var raw = modelKey + "\n" + (modeKey ?? "") + "\n" + prompt;
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
         return Path.Combine(_dir, hash + ".json");
     }

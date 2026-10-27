@@ -2,7 +2,11 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using OptiForge.AI;
 using OptiForge.Core;
@@ -30,6 +34,8 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<Playbook> _playbooks = [];
     private bool _cleanBusy;
     private bool _exitCleanupDone;
+    private readonly List<(string role, string content)> _aiHistory = [];
+    private AiAssistMode _aiMode = AiAssistModes.Default;
 
     public MainWindow()
     {
@@ -49,7 +55,7 @@ public partial class MainWindow : Window
         RestoreStartupsCheck.IsChecked = _settings.RestoreStartupsOnExit;
         AdminStatusText.Text = RamTrimmer.IsRunningAsAdministrator()
             ? "Running as Administrator."
-            : "Not admin ? standby/QoS limited; working-set trim still works.";
+            : "Not admin - standby/QoS limited; working-set trim still works.";
 
         foreach (var def in _cleaner.Categories)
         {
@@ -71,6 +77,7 @@ public partial class MainWindow : Window
 
         VersionText.Text = "Version: " + _updates.CurrentVersion;
         RefreshStartupList();
+        InitAiUi();
 
         _ = RefreshAiStatusAsync();
         RefreshMonitor();
@@ -132,12 +139,74 @@ public partial class MainWindow : Window
         StatusText.Text = s.Timestamp.ToString("HH:mm:ss");
     }
 
+    private void InitAiUi()
+    {
+        AiCapabilityText.Text = AiAssistModes.CapabilityBlurb;
+        AiModeCombo.ItemsSource = AiAssistModes.All;
+        AiModeCombo.SelectedItem = AiAssistModes.Default;
+        ApplyAiMode(AiAssistModes.Default);
+
+        AiQuickPanel.Children.Clear();
+        foreach (var mode in AiAssistModes.All)
+        {
+            var btn = new Button
+            {
+                Content = mode.Title,
+                Tag = mode.Id,
+                Margin = new Thickness(0, 0, 6, 6),
+                Padding = new Thickness(10, 4, 10, 4),
+                ToolTip = mode.Description
+            };
+            btn.Click += AiQuickMode_Click;
+            AiQuickPanel.Children.Add(btn);
+        }
+
+        if (string.IsNullOrWhiteSpace(AiChatBox.Text))
+        {
+            AiChatBox.Text =
+                "Chon che do ben tren -> Start server -> go noi dung -> Gui (Ctrl+Enter).\n" +
+                "Bam chip che do de nap prompt mau.";
+        }
+    }
+
+    private void ApplyAiMode(AiAssistMode mode)
+    {
+        _aiMode = mode;
+        AiModeHintText.Text = mode.Description;
+        AiPromptBox.ToolTip = mode.Placeholder;
+        if (string.IsNullOrWhiteSpace(AiPromptBox.Text) && !string.IsNullOrWhiteSpace(mode.ExamplePrompt))
+            AiPromptBox.Text = mode.ExamplePrompt;
+    }
+
+    private void AiModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (AiModeCombo.SelectedItem is AiAssistMode mode)
+            ApplyAiMode(mode);
+    }
+
+    private void AiQuickMode_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string id }) return;
+        var mode = AiAssistModes.Find(id);
+        if (mode is null) return;
+        AiModeCombo.SelectedItem = mode;
+        if (!string.IsNullOrWhiteSpace(mode.ExamplePrompt))
+            AiPromptBox.Text = mode.ExamplePrompt;
+        AiPromptBox.Focus();
+        AiPromptBox.CaretIndex = AiPromptBox.Text.Length;
+    }
+
     private async Task RefreshAiStatusAsync()
     {
         var st = await _ai.GetStatusAsync();
         AiStatusText.Text = st.Message;
+        var ready = st.ServerReachable;
+        AiReadyBadgeText.Text = ready ? "Ready" : (st.RuntimePresent && st.ModelPresent ? "Not started" : "Need setup");
+        AiReadyBadge.Background = ready
+            ? new SolidColorBrush(Color.FromRgb(0x1E, 0x3A, 0x2F))
+            : new SolidColorBrush(Color.FromRgb(0x2A, 0x32, 0x3E));
         if (!string.IsNullOrWhiteSpace(st.ActiveModelPath))
-            AiMetaText.Text = "Model: " + Path.GetFileName(st.ActiveModelPath);
+            AiMetaText.Text = "Model: " + Path.GetFileName(st.ActiveModelPath) + "  |  Mode: " + _aiMode.Title;
     }
 
     private async void RefreshAi_Click(object sender, RoutedEventArgs e)
@@ -183,7 +252,7 @@ public partial class MainWindow : Window
     private async void StartAi_Click(object sender, RoutedEventArgs e)
     {
         StartAiBtn.IsEnabled = false;
-        AiStatusText.Text = "Starting llama-server?";
+        AiStatusText.Text = "Starting llama-server...";
         try
         {
             var (ok, msg) = await _ai.StartServerAsync();
@@ -209,31 +278,104 @@ public partial class MainWindow : Window
         await RefreshAiStatusAsync();
     }
 
+    private void AiPromptBox_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            SendAi_Click(sender, e);
+        }
+    }
+
     private async void SendAi_Click(object sender, RoutedEventArgs e)
     {
         var prompt = AiPromptBox.Text?.Trim() ?? "";
         if (prompt.Length == 0) return;
 
+        if (AiModeCombo.SelectedItem is AiAssistMode selected)
+            _aiMode = selected;
+
         SendAiBtn.IsEnabled = false;
-        AiResponseBox.Text = "Thinking?";
-        AiMetaText.Text = "";
+        AppendAiChat("You", prompt);
+        AiPromptBox.Clear();
+        AiMetaText.Text = "Thinking...";
+        AiChatBox.ScrollToEnd();
+
         try
         {
             var useCache = UseCacheCheck.IsChecked == true;
-            var (fromCache, response) = await _ai.ChatAsync(prompt, useCache);
-            AiResponseBox.Text = response;
-            AiMetaText.Text = fromCache ? "Cache hit" : "Fresh generation";
+            var multi = MultiTurnCheck.IsChecked == true;
+            IReadOnlyList<(string role, string content)>? history = multi && _aiHistory.Count > 1
+                ? _aiHistory.Take(_aiHistory.Count - 1).ToList()
+                : null;
+
+            var (fromCache, response) = await _ai.ChatAsync(prompt, useCache, _aiMode, history);
+            AppendAiChat("AI", response);
+            AiMetaText.Text = (fromCache ? "Cache | " : "Fresh | ") + _aiMode.Title + " | Ctrl+Enter to send";
+            AiChatBox.ScrollToEnd();
         }
         catch (Exception ex)
         {
-            AiResponseBox.Text = ex.Message;
+            AppendAiChat("Error", ex.Message);
+            AiMetaText.Text = ex.Message;
         }
         finally
         {
             SendAiBtn.IsEnabled = true;
+            await RefreshAiStatusAsync();
         }
     }
 
+    private void AppendAiChat(string who, string text)
+    {
+        if (AiChatBox.Text.StartsWith("Chon che do", StringComparison.Ordinal))
+            AiChatBox.Clear();
+
+        var role = who switch
+        {
+            "You" => "user",
+            "AI" => "assistant",
+            _ => "system"
+        };
+        if (role is "user" or "assistant")
+            _aiHistory.Add((role, text));
+
+        while (_aiHistory.Count > 8)
+            _aiHistory.RemoveAt(0);
+
+        var sb = new StringBuilder();
+        if (!string.IsNullOrWhiteSpace(AiChatBox.Text))
+            sb.AppendLine(AiChatBox.Text.TrimEnd());
+        sb.AppendLine();
+        sb.Append('[').Append(who).Append("] ");
+        sb.AppendLine(text.Trim());
+        AiChatBox.Text = sb.ToString().TrimStart();
+    }
+
+    private void ClearAiChat_Click(object sender, RoutedEventArgs e)
+    {
+        _aiHistory.Clear();
+        AiChatBox.Text =
+            "Chat cleared. Pick a mode -> type -> Send.\n" +
+            AiAssistModes.CapabilityBlurb;
+        AiMetaText.Text = "Chat cleared";
+    }
+
+    private void CopyAi_Click(object sender, RoutedEventArgs e)
+    {
+        var last = _aiHistory.LastOrDefault(x => x.role == "assistant").content;
+        var text = !string.IsNullOrWhiteSpace(last) ? last : AiChatBox.Text;
+        if (string.IsNullOrWhiteSpace(text)) return;
+        try
+        {
+            Clipboard.SetText(text);
+            AiMetaText.Text = "Copied last AI reply.";
+        }
+        catch (Exception ex)
+        {
+            AiMetaText.Text = "Copy failed: " + ex.Message;
+        }
+    }
     private async void TrimRam_Click(object sender, RoutedEventArgs e)
     {
         TrimRamBtn.IsEnabled = false;
@@ -345,10 +487,10 @@ public partial class MainWindow : Window
         var restore = RestoreStartupsCheck.IsChecked == true;
         var confirm = MessageBox.Show(
             "Safe eject cleanup:\n" +
-            "? Stop llama from this drive\n" +
-            "? Remove all OptiForge_* QoS policies\n" +
-            "? Clear update temp on portable data\n" +
-            (restore ? "? Restore disabled startups\n" : "? Keep startup changes (not restoring)\n") +
+            "- Stop llama from this drive\n" +
+            "- Remove all OptiForge_* QoS policies\n" +
+            "- Clear update temp on portable data\n" +
+            (restore ? "- Restore disabled startups\n" : "- Keep startup changes (not restoring)\n") +
             "\nContinue?",
             "OptiForge Safe eject",
             MessageBoxButton.YesNo,
@@ -378,7 +520,7 @@ public partial class MainWindow : Window
     {
         var lines = new List<string> { report.Summary };
         lines.AddRange(report.Actions);
-        lines.AddRange(report.Warnings.Select(w => "? " + w));
+        lines.AddRange(report.Warnings.Select(w => "! " + w));
         return string.Join("\n", lines);
     }
 

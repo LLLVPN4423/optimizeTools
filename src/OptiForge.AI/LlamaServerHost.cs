@@ -134,25 +134,33 @@ public sealed class LlamaServerHost : IAsyncDisposable
         string prompt,
         PromptCache cache,
         bool useCache = true,
+        string? systemPrompt = null,
+        string? modeKey = null,
+        double temperature = 0.4,
+        int maxTokens = 512,
+        IReadOnlyList<(string role, string content)>? history = null,
         CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(prompt))
             return (false, "Prompt trống.");
 
         var modelKey = ModelPath ?? $"port:{_port}";
-        if (useCache && cache.TryGet(modelKey, prompt, out var cached))
+        var cacheKey = (modeKey ?? "chat") + "\n" + (systemPrompt ?? "") + "\n" + prompt;
+        var canCache = useCache && (history is null || history.Count == 0);
+        if (canCache && cache.TryGet(modelKey, cacheKey, out var cached, modeKey))
             return (true, cached);
 
         if (!await IsReachableAsync(ct))
             return (false, "Server chưa chạy. Bấm Start server trước.");
 
-        // OpenAI-compatible chat completions (llama-server)
+        var messagesJson = BuildMessagesJson(systemPrompt, history, prompt);
+        var temp = temperature.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var body = $$"""
         {
           "model": "local",
-          "messages": [{"role":"user","content":{{JsonEscape(prompt)}}}],
-          "temperature": 0.4,
-          "max_tokens": 512
+          "messages": {{messagesJson}},
+          "temperature": {{temp}},
+          "max_tokens": {{maxTokens}}
         }
         """;
 
@@ -161,24 +169,49 @@ public sealed class LlamaServerHost : IAsyncDisposable
         var raw = await resp.Content.ReadAsStringAsync(ct);
         if (!resp.IsSuccessStatusCode)
         {
-            // Fallback: /completion
+            var combined = string.IsNullOrWhiteSpace(systemPrompt)
+                ? prompt
+                : systemPrompt + "\n\nUser: " + prompt;
             var body2 = $$"""
-            {"prompt":{{JsonEscape(prompt)}},"n_predict":512,"temperature":0.4}
+            {"prompt":{{JsonEscape(combined)}},"n_predict":{{maxTokens}},"temperature":{{temp}}}
             """;
             using var content2 = new StringContent(body2, System.Text.Encoding.UTF8, "application/json");
             using var resp2 = await _http.PostAsync($"http://127.0.0.1:{_port}/completion", content2, ct);
             var raw2 = await resp2.Content.ReadAsStringAsync(ct);
             if (!resp2.IsSuccessStatusCode)
-                return (false, $"API error {(int)resp.StatusCode}/{ (int)resp2.StatusCode}: {Trim(raw)} | {Trim(raw2)}");
+                return (false, $"API error {(int)resp.StatusCode}/{(int)resp2.StatusCode}: {Trim(raw)} | {Trim(raw2)}");
 
             var text2 = ExtractCompletion(raw2);
-            if (useCache) cache.Set(modelKey, prompt, text2);
+            if (canCache) cache.Set(modelKey, cacheKey, text2, modeKey);
             return (false, text2);
         }
 
         var text = ExtractChat(raw);
-        if (useCache) cache.Set(modelKey, prompt, text);
+        if (canCache) cache.Set(modelKey, cacheKey, text, modeKey);
         return (false, text);
+    }
+
+    private static string BuildMessagesJson(
+        string? systemPrompt,
+        IReadOnlyList<(string role, string content)>? history,
+        string userPrompt)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(systemPrompt))
+            parts.Add($$"""{"role":"system","content":{{JsonEscape(systemPrompt)}}}""");
+
+        if (history is not null)
+        {
+            foreach (var (role, content) in history)
+            {
+                if (string.IsNullOrWhiteSpace(content)) continue;
+                var r = role is "assistant" or "system" or "user" ? role : "user";
+                parts.Add($$"""{"role":"{{r}}","content":{{JsonEscape(content)}}}""");
+            }
+        }
+
+        parts.Add($$"""{"role":"user","content":{{JsonEscape(userPrompt)}}}""");
+        return "[" + string.Join(",", parts) + "]";
     }
 
     private static string ExtractChat(string json)
