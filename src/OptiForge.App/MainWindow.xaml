@@ -114,10 +114,15 @@
 
       <TabItem Header="RAM">
         <StackPanel Margin="8">
-          <TextBlock Text="RAM Trim (Phase 4)" FontSize="16" FontWeight="SemiBold"/>
+          <TextBlock Text="RAM Trim" FontSize="16" FontWeight="SemiBold"/>
           <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.75"
-                     Text="Trim working sets / standby list qua Windows API (có thể cần Run as Administrator)."/>
-          <Button Content="Trim (coming soon)" IsEnabled="False" Margin="0,12,0,0" HorizontalAlignment="Left"/>
+                     Text="Thu nhỏ working set của process. Clear standby list cần Run as Administrator."/>
+          <CheckBox x:Name="ClearStandbyCheck" Content="Clear standby list (cần admin)"
+                    IsChecked="True" Margin="0,12,0,0" Foreground="#FFE8EAED"/>
+          <TextBlock x:Name="AdminStatusText" Margin="0,8,0,0" Opacity="0.7"/>
+          <Button x:Name="TrimRamBtn" Content="Trim RAM now" Click="TrimRam_Click"
+                  Margin="0,12,0,0" HorizontalAlignment="Left"/>
+          <TextBlock x:Name="RamTrimSummaryText" Margin="0,12,0,0" TextWrapping="Wrap" Opacity="0.9"/>
         </StackPanel>
       </TabItem>
 

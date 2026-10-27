@@ -46,6 +46,9 @@ public partial class MainWindow : Window
             });
         }
         CleanList.ItemsSource = _cleanRows;
+        AdminStatusText.Text = RamTrimmer.IsRunningAsAdministrator()
+            ? "?ang ch?y v?i quy?n Administrator."
+            : "Kh?ng ph?i admin ? standby list s? b? b? qua (working-set trim v?n ch?y).";
 
         RefreshAiStatus();
         RefreshMonitor();
@@ -86,6 +89,28 @@ public partial class MainWindow : Window
 
     private void RefreshAi_Click(object sender, RoutedEventArgs e) => RefreshAiStatus();
 
+    private async void TrimRam_Click(object sender, RoutedEventArgs e)
+    {
+        TrimRamBtn.IsEnabled = false;
+        RamTrimSummaryText.Text = "Trimming?";
+        var clearStandby = ClearStandbyCheck.IsChecked == true;
+        try
+        {
+            var report = await Task.Run(() => new RamTrimmer().Trim(clearStandby));
+            RamTrimSummaryText.Text = report.Summary;
+            RefreshMonitor();
+            StatusText.Text = "RAM trim done";
+        }
+        catch (Exception ex)
+        {
+            RamTrimSummaryText.Text = "Error: " + ex.Message;
+        }
+        finally
+        {
+            TrimRamBtn.IsEnabled = true;
+        }
+    }
+
     private async void ScanClean_Click(object sender, RoutedEventArgs e)
         => await RunCleanJobAsync(dryRunForce: true);
 
@@ -95,7 +120,7 @@ public partial class MainWindow : Window
         if (!dryRun)
         {
             var confirm = MessageBox.Show(
-                "Xóa file trong các category ?ã ch?n?\n(File ?ang b? khóa s? b? b? qua.)",
+                "X?a file trong c?c category ?? ch?n?\n(File ?ang b? kh?a s? b? b? qua.)",
                 "OptiForge Clean",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
