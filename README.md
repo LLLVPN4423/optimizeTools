@@ -1,84 +1,62 @@
 # OptiForge (`optimizeTools`)
 
-Portable Windows toolkit for an **external drive**: monitor · safe disk clean · RAM trim · local AI (llama.cpp) · offline tips.
+Portable Windows toolkit for an **external drive**: monitor · clean · RAM · local AI · network QoS · startup · tips · auto-update.
 
 **GitHub:** https://github.com/LLLVPN4423/optimizeTools  
-**Version:** 0.1.0
+**Version:** 0.2.0
 
 ## Requirements
 
 - Windows 10/11 x64  
-- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download) (framework-dependent publish)  
-- Optional AI: [llama.cpp `llama-server` release](https://github.com/ggml-org/llama.cpp/releases) + one GGUF (~2 GB Q4_K_M)
+- **Self-contained build:** no .NET install needed (`scripts\publish-selfcontained.bat`)  
+- **Framework build:** needs [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download)  
+- AI download needs internet once (~2GB model + llama-server)
 
 ## Quick start
 
 ```bat
-scripts\publish-portable.bat
+scripts\publish-selfcontained.bat
 Launch.bat
 ```
 
-Dev build:
-
-```bat
-dotnet build src\OptiForge.slnx -c Release
-Launch.bat
-```
-
-## Portable layout (≤10 GB with models)
-
-```
-optimizeTools/
-  App/                 published exe + data/
-  Runtime/llama/       llama-server.exe
-  Models/fast/         default GGUF (~2GB)
-  Models/quality/      optional 7–8B GGUF
-  Knowledge/playbooks/ offline tips JSON
-  Launch.bat
-  src/                 source
-```
-
-Drive letter can change — all paths are relative / `OPTIFORGE_ROOT`.
+Then in app → **AI** → **Download AI runtime+model** → **Start server** → chat.
 
 ## Features
 
-| Tab | What it does |
-|-----|----------------|
+| Tab | Capability |
+|-----|------------|
 | Dashboard | CPU / RAM / Disk live |
-| Clean | Safe temp scan + dry-run / delete |
-| RAM | Empty working sets; standby purge if admin |
-| AI | Start llama-server, chat, prompt cache |
+| Clean | Safe temp clean + dry-run |
+| RAM | Working-set trim + standby (admin) |
+| AI | Auto-download runtime/model, chat, cache |
+| Network | Per-process KB/s limit via Windows QoS (admin) |
+| Startup | HKCU Run disable/enable with backup (debloat-lite) |
 | Tips | Offline playbooks |
-| Settings | Save prefs + GitHub release check |
+| Settings | Save prefs + check/apply GitHub update |
 
-## AI setup
+## Portable layout (≤10 GB with model)
 
-1. Download Windows `llama-server` → `Runtime/llama/`  
-2. Download e.g. **Qwen2.5 3B Instruct Q4_K_M** `.gguf` → `Models/fast/`  
-3. App → **AI** → **Start server** → chat  
-
-Prefer USB 3 / portable SSD for model load speed.
-
-## Status
-
-| Phase | Feature | Status |
-|-------|---------|--------|
-| 0 | Portable layout + Launch.bat | done |
-| 1 | WPF skeleton + settings | done |
-| 2 | Dashboard CPU/RAM/Disk | done |
-| 3 | Disk clean + dry-run | done |
-| 4 | RAM trim | done |
-| 5 | llama.cpp chat + cache | done |
-| 6 | Knowledge playbooks UI | done |
-| 7 | GitHub Releases update check | done |
-| 8 | Bundle polish | done |
-
-## Git note (external / no-ownership drives)
-
-```bat
-git -c safe.directory=D:/repos/optimizeTools status
 ```
+optimizeTools/
+  App/                 exe (+ runtime if self-contained)
+  Runtime/llama/       llama-server (downloaded)
+  Models/fast/         GGUF ~2GB (downloaded)
+  Knowledge/playbooks/
+  Launch.bat
+  src/
+```
+
+## Auto-update
+
+1. Publish a GitHub Release with asset named like `OptiForge-win-x64.zip` (contents = `App\` files).  
+2. In Settings → **Download + apply update**.
+
+## Notes
+
+- Debloat is **startup-only** (no aggressive registry cleaner).  
+- Network throttle uses **QoS**, not WinDivert.  
+- Models/binaries are gitignored — stay on your drive.
 
 ## License
 
-Use and modify for personal / educational purposes. Third-party runtimes (llama.cpp) keep their own licenses.
+Personal / educational use. llama.cpp and model licenses apply separately.
