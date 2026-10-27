@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 — OptiForge 3.0 foundation
+
+- Chat-first sidebar shell (design tokens, nav, hidden tab chrome)
+- Persistent conversations (`App/data/conversations/`) — new/search/delete/resume
+- Resource governor profiles: Balanced / LowMemory / Performance / Manual
+- Docs: CURRENT_STATE, IMPLEMENTATION_PLAN, REGRESSION_BASELINE
+- Preserves Clean/RAM/Network/Startup/Agent/Quota/Tips/Safe eject
+
 ## 0.4.0
 
 - **Local Agent** tab: chat → plan → scaffold project under `Projects/` (html/csharp/python/node)

@@ -30,14 +30,18 @@ public partial class MainWindow : Window
     private readonly StartupManager _startup = new();
     private readonly HostCleanupService _hostCleanup;
     private readonly ProjectAgent _agent;
+    private readonly ConversationStore _conversations;
+    private readonly ResourceGovernor _governor = new();
     private readonly DispatcherTimer _timer;
     private readonly ObservableCollection<CleanRow> _cleanRows = [];
     private readonly ObservableCollection<Playbook> _playbooks = [];
+    private readonly ObservableCollection<ConversationIndexEntry> _convItems = [];
     private bool _cleanBusy;
     private bool _exitCleanupDone;
     private readonly List<(string role, string content)> _aiHistory = [];
     private AiAssistMode _aiMode = AiAssistModes.Default;
     private AgentPlan? _lastAgentPlan;
+    private Conversation? _activeConversation;
 
     public MainWindow()
     {
@@ -50,6 +54,9 @@ public partial class MainWindow : Window
         _aiSetup = new AiBootstrapper(_paths);
         _hostCleanup = new HostCleanupService(_paths);
         _agent = new ProjectAgent(_paths);
+        _conversations = new ConversationStore(_paths);
+        if (Enum.TryParse<ResourceProfile>(_settings.ResourceProfile, true, out var rp))
+            _governor.Profile = rp;
 
         RootPathText.Text = "Root: " + _paths.Root;
         SettingsPathText.Text = "Settings: " + _paths.SettingsPath;
@@ -58,6 +65,12 @@ public partial class MainWindow : Window
         RestoreStartupsCheck.IsChecked = _settings.RestoreStartupsOnExit;
         LmStudioUrlBox.Text = _settings.LmStudioUrl;
         SelectBackendCombo(_settings.AiBackend);
+        SelectResourceProfileCombo(_settings.ResourceProfile);
+        ConvList.ItemsSource = _convItems;
+        RefreshConversationList();
+        EnsureActiveConversation();
+        NavigateTo("AI");
+        UpdateBackendBadge();
         AdminStatusText.Text = RamTrimmer.IsRunningAsAdministrator()
             ? "Running as Administrator."
             : "Not admin - standby/QoS limited; working-set trim still works.";
@@ -110,6 +123,8 @@ public partial class MainWindow : Window
         _exitCleanupDone = true;
         _timer.Stop();
 
+        try { PersistActiveConversation(); } catch { /* ignore */ }
+
         try
         {
             // Always stop AI we own; then optional host-side cleanup.
@@ -143,6 +158,150 @@ public partial class MainWindow : Window
         DiskText.Text = $"{diskUsedPct:0}% used";
         DiskDetailText.Text = $"{s.SystemDrive}  free {s.DiskFreeGb:0.0} / {s.DiskTotalGb:0.0} GB";
         StatusText.Text = s.Timestamp.ToString("HH:mm:ss");
+        var freePct = s.RamTotalGb > 0 ? (1 - s.RamUsedGb / s.RamTotalGb) * 100 : 0;
+        var advice = _governor.Advise(freePct);
+        ResourceAdviceText.Text = advice.Summary;
+    }
+
+    private void NavigateTo(string tag)
+    {
+        WorkspaceTitleText.Text = tag switch
+        {
+            "AI" => "Chat",
+            "Dashboard" => "Monitor",
+            _ => tag
+        };
+        for (var i = 0; i < MainTabs.Items.Count; i++)
+        {
+            if (MainTabs.Items[i] is TabItem { Tag: string t } &&
+                string.Equals(t, tag, StringComparison.OrdinalIgnoreCase))
+            {
+                MainTabs.SelectedIndex = i;
+                return;
+            }
+        }
+    }
+
+    private void Nav_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string tag })
+            NavigateTo(tag);
+    }
+
+    private void UpdateBackendBadge()
+    {
+        BackendBadgeText.Text = $"{_settings.AiBackend} ? {_governor.Profile}";
+    }
+
+    private void RefreshConversationList(string? search = null)
+    {
+        _convItems.Clear();
+        var items = string.IsNullOrWhiteSpace(search)
+            ? _conversations.List()
+            : _conversations.Search(search);
+        foreach (var e in items)
+            _convItems.Add(e);
+    }
+
+    private void EnsureActiveConversation()
+    {
+        if (_activeConversation is not null) return;
+        var first = _conversations.List().FirstOrDefault();
+        _activeConversation = first is null
+            ? _conversations.Create()
+            : _conversations.Get(first.Id) ?? _conversations.Create();
+        RefreshConversationList();
+        SelectConversationInList(_activeConversation.Id);
+        LoadConversationIntoUi(_activeConversation);
+    }
+
+    private void SelectConversationInList(string id)
+    {
+        var item = _convItems.FirstOrDefault(c => c.Id == id);
+        if (item is not null)
+            ConvList.SelectedItem = item;
+    }
+
+    private void LoadConversationIntoUi(Conversation c)
+    {
+        _aiHistory.Clear();
+        var sb = new StringBuilder();
+        foreach (var m in c.Messages)
+        {
+            var who = m.Role == "user" ? "You" : m.Role == "assistant" ? "AI" : "System";
+            sb.AppendLine($"[{who}] {m.Content}");
+            sb.AppendLine();
+            if (m.Role is "user" or "assistant")
+                _aiHistory.Add((m.Role, m.Content));
+        }
+        AiChatBox.Text = sb.Length == 0
+            ? "New conversation. Pick a mode, Start server (or LM Studio), then send.\n" + AiAssistModes.CapabilityBlurb
+            : sb.ToString().Trim();
+        WorkspaceTitleText.Text = c.Title;
+    }
+
+    private void PersistActiveConversation()
+    {
+        if (_activeConversation is null) return;
+        _activeConversation.Messages = _aiHistory.Select(h => new ChatMessage
+        {
+            Role = h.role,
+            Content = h.content
+        }).ToList();
+        _activeConversation.ModelHint = _settings.AiBackend;
+        _conversations.Save(_activeConversation);
+        RefreshConversationList(ConvSearchBox.Text);
+        SelectConversationInList(_activeConversation.Id);
+        WorkspaceTitleText.Text = _activeConversation.Title;
+    }
+
+    private void NewChat_Click(object sender, RoutedEventArgs e)
+    {
+        PersistActiveConversation();
+        _activeConversation = _conversations.Create();
+        _aiHistory.Clear();
+        AiChatBox.Text = "New conversation ready.";
+        AiPromptBox.Clear();
+        RefreshConversationList();
+        SelectConversationInList(_activeConversation.Id);
+        NavigateTo("AI");
+    }
+
+    private void ConvList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ConvList.SelectedItem is not ConversationIndexEntry entry) return;
+        if (_activeConversation?.Id == entry.Id) return;
+        PersistActiveConversation();
+        _activeConversation = _conversations.Get(entry.Id);
+        if (_activeConversation is null) return;
+        LoadConversationIntoUi(_activeConversation);
+        NavigateTo("AI");
+    }
+
+    private void ConvSearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        => RefreshConversationList(ConvSearchBox.Text);
+
+    private void DeleteChat_Click(object sender, RoutedEventArgs e)
+    {
+        if (_activeConversation is null) return;
+        var id = _activeConversation.Id;
+        if (MessageBox.Show("Delete this conversation?", "OptiForge", MessageBoxButton.YesNo, MessageBoxImage.Warning)
+            != MessageBoxResult.Yes) return;
+        _conversations.Delete(id);
+        _activeConversation = null;
+        EnsureActiveConversation();
+    }
+
+    private void SelectResourceProfileCombo(string profile)
+    {
+        foreach (ComboBoxItem item in ResourceProfileCombo.Items)
+        {
+            if (string.Equals(item.Content?.ToString(), profile, StringComparison.OrdinalIgnoreCase))
+            {
+                ResourceProfileCombo.SelectedItem = item;
+                return;
+            }
+        }
     }
 
     private void InitAiUi()
@@ -324,10 +483,12 @@ public partial class MainWindow : Window
                 history);
 
             FinalizeAiStream(response);
+            PersistActiveConversation();
             AiMetaText.Text = (fromCache ? "Cache | " : "Stream | ") + _aiMode.Title +
-                              " | Cloud brief de keo dai free tier";
+                              " | saved ? Cloud brief available";
             AiChatBox.ScrollToEnd();
             RefreshQuotaUi();
+            UpdateBackendBadge();
         }
         catch (Exception ex)
         {
@@ -732,7 +893,12 @@ public partial class MainWindow : Window
         _settings.RestoreStartupsOnExit = RestoreStartupsCheck.IsChecked == true;
         _settings.AiBackend = GetSelectedBackend();
         _settings.LmStudioUrl = LmStudioUrlBox.Text?.Trim() ?? _settings.LmStudioUrl;
+        _settings.ResourceProfile = (ResourceProfileCombo.SelectedItem as ComboBoxItem)?.Content?.ToString()
+                                    ?? "Balanced";
+        if (Enum.TryParse<ResourceProfile>(_settings.ResourceProfile, true, out var rp))
+            _governor.Profile = rp;
         _settings.Save(_paths);
+        UpdateBackendBadge();
         StatusText.Text = "Settings saved";
     }
 

@@ -1,41 +1,84 @@
-﻿<Window x:Class="OptiForge.App.MainWindow"
+<Window x:Class="OptiForge.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="OptiForge"
-        Height="640" Width="920"
-        MinHeight="520" MinWidth="780"
-        Background="#FF121418"
-        Foreground="#FFE8EAED"
+        Title="OptiForge 3.0"
+        Height="720" Width="1100"
+        MinHeight="560" MinWidth="900"
+        Background="{StaticResource BrushAppBg}"
+        Foreground="{StaticResource BrushText}"
         WindowStartupLocation="CenterScreen">
   <Window.Resources>
-    <Style TargetType="TextBlock">
-      <Setter Property="Foreground" Value="#FFE8EAED"/>
-      <Setter Property="Margin" Value="0,2"/>
-    </Style>
-    <Style TargetType="Button">
-      <Setter Property="Padding" Value="12,6"/>
-      <Setter Property="Margin" Value="0,0,8,0"/>
-      <Setter Property="Background" Value="#FF2A2F3A"/>
-      <Setter Property="Foreground" Value="#FFE8EAED"/>
-      <Setter Property="BorderBrush" Value="#FF3D4450"/>
-    </Style>
     <Style TargetType="TabItem">
-      <Setter Property="Padding" Value="12,6"/>
+      <Setter Property="Visibility" Value="Collapsed"/>
+      <Setter Property="Height" Value="0"/>
+      <Setter Property="Width" Value="0"/>
     </Style>
   </Window.Resources>
 
-  <DockPanel Margin="16">
-    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-      <StackPanel>
-        <TextBlock Text="OptiForge" FontSize="22" FontWeight="SemiBold"/>
-        <TextBlock x:Name="RootPathText" FontSize="12" Opacity="0.7"/>
-      </StackPanel>
-      <TextBlock x:Name="StatusText" DockPanel.Dock="Right" VerticalAlignment="Center"
-                 HorizontalAlignment="Right" Opacity="0.8"/>
-    </DockPanel>
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="232"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
 
-    <TabControl Background="Transparent" BorderThickness="0">
-      <TabItem Header="Dashboard">
+    <!-- Sidebar -->
+    <Border Grid.Column="0" Background="{StaticResource BrushSidebar}" BorderBrush="{StaticResource BrushBorder}" BorderThickness="0,0,1,0">
+      <DockPanel Margin="10,14,10,12">
+        <StackPanel DockPanel.Dock="Top" Margin="4,0,4,12">
+          <TextBlock Text="OptiForge" FontSize="20" FontWeight="SemiBold"/>
+          <TextBlock x:Name="RootPathText" FontSize="10" Foreground="{StaticResource BrushMuted}" TextWrapping="Wrap"/>
+          <TextBlock x:Name="ResourceAdviceText" FontSize="10" Foreground="{StaticResource BrushMuted}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+          <Button Content="+ New chat" Style="{StaticResource NavButton}" Click="NewChat_Click"
+                  Background="#FF1E3A40" FontWeight="SemiBold"/>
+          <TextBox x:Name="ConvSearchBox" Margin="6,8,6,4" Padding="8,6"
+                   Background="{StaticResource BrushElevated}" Foreground="{StaticResource BrushText}"
+                   BorderBrush="{StaticResource BrushBorder}"
+                   TextChanged="ConvSearchBox_TextChanged" ToolTip="Search conversations"/>
+        </StackPanel>
+
+        <ListBox x:Name="ConvList" DockPanel.Dock="Top" Height="180" Margin="0,0,0,10"
+                 Background="Transparent" BorderThickness="0" Foreground="{StaticResource BrushText}"
+                 DisplayMemberPath="Title" SelectionChanged="ConvList_SelectionChanged"/>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="WORKSPACE" FontSize="10" Foreground="{StaticResource BrushMuted}" Margin="10,4,0,4"/>
+            <Button Content="Chat" Style="{StaticResource NavButton}" Tag="AI" Click="Nav_Click"/>
+            <Button Content="Agent" Style="{StaticResource NavButton}" Tag="Agent" Click="Nav_Click"/>
+            <Button Content="Projects folder" Style="{StaticResource NavButton}" Click="AgentOpenProjects_Click"/>
+            <TextBlock Text="SYSTEM" FontSize="10" Foreground="{StaticResource BrushMuted}" Margin="10,12,0,4"/>
+            <Button Content="Monitor" Style="{StaticResource NavButton}" Tag="Dashboard" Click="Nav_Click"/>
+            <Button Content="Clean" Style="{StaticResource NavButton}" Tag="Clean" Click="Nav_Click"/>
+            <Button Content="RAM" Style="{StaticResource NavButton}" Tag="RAM" Click="Nav_Click"/>
+            <Button Content="Network" Style="{StaticResource NavButton}" Tag="Network" Click="Nav_Click"/>
+            <Button Content="Startup" Style="{StaticResource NavButton}" Tag="Startup" Click="Nav_Click"/>
+            <TextBlock Text="MORE" FontSize="10" Foreground="{StaticResource BrushMuted}" Margin="10,12,0,4"/>
+            <Button Content="Quota Saver" Style="{StaticResource NavButton}" Tag="Quota" Click="Nav_Click"/>
+            <Button Content="Tips" Style="{StaticResource NavButton}" Tag="Tips" Click="Nav_Click"/>
+            <Button Content="Settings" Style="{StaticResource NavButton}" Tag="Settings" Click="Nav_Click"/>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- Main -->
+    <DockPanel Grid.Column="1" Margin="16,12,16,12">
+      <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock x:Name="WorkspaceTitleText" Text="Chat" FontSize="18" FontWeight="SemiBold"/>
+          <Border Margin="12,0,0,0" CornerRadius="4" Padding="8,3" Background="{StaticResource BrushElevated}">
+            <TextBlock x:Name="BackendBadgeText" Text="Backend" FontSize="11" Foreground="{StaticResource BrushMuted}"/>
+          </Border>
+        </StackPanel>
+        <TextBlock x:Name="StatusText" DockPanel.Dock="Right" VerticalAlignment="Center"
+                   HorizontalAlignment="Right" Foreground="{StaticResource BrushMuted}"/>
+      </DockPanel>
+
+      <TabControl x:Name="MainTabs" Background="Transparent" BorderThickness="0">
+      <TabItem Header="Dashboard" Tag="Dashboard">
         <Grid Margin="8">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -76,7 +119,7 @@
         </Grid>
       </TabItem>
 
-      <TabItem Header="Clean">
+      <TabItem Header="Clean" Tag="Clean">
         <Grid Margin="8">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -119,7 +162,7 @@
         </Grid>
       </TabItem>
 
-      <TabItem Header="RAM">
+      <TabItem Header="RAM" Tag="RAM">
         <StackPanel Margin="8">
           <TextBlock Text="RAM Trim" FontSize="16" FontWeight="SemiBold"/>
           <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.75"
@@ -133,7 +176,7 @@
         </StackPanel>
       </TabItem>
 
-      <TabItem Header="AI">
+      <TabItem Header="AI" Tag="AI">
         <Grid Margin="8">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -213,7 +256,7 @@
         </Grid>
       </TabItem>
 
-      <TabItem Header="Agent">
+      <TabItem Header="Agent" Tag="Agent">
         <Grid Margin="8">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -267,7 +310,7 @@
         </Grid>
       </TabItem>
 
-      <TabItem Header="Quota">
+      <TabItem Header="Quota" Tag="Quota">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="8">
             <TextBlock Text="Free-tier Saver" FontSize="16" FontWeight="SemiBold"/>
@@ -302,7 +345,7 @@
         </ScrollViewer>
       </TabItem>
 
-      <TabItem Header="Network">
+      <TabItem Header="Network" Tag="Network">
         <StackPanel Margin="8">
           <TextBlock Text="Network throttle (Windows QoS)" FontSize="16" FontWeight="SemiBold"/>
           <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.75"
@@ -322,7 +365,7 @@
         </StackPanel>
       </TabItem>
 
-      <TabItem Header="Startup">
+      <TabItem Header="Startup" Tag="Startup">
         <Grid Margin="8">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -355,7 +398,7 @@
         </Grid>
       </TabItem>
 
-      <TabItem Header="Tips">
+      <TabItem Header="Tips" Tag="Tips">
         <Grid Margin="8">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="240"/>
@@ -374,12 +417,22 @@
         </Grid>
       </TabItem>
 
-      <TabItem Header="Settings">
+      <TabItem Header="Settings" Tag="Settings">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="8">
             <TextBlock Text="Settings" FontSize="16" FontWeight="SemiBold"/>
             <TextBlock x:Name="SettingsPathText" Margin="0,8,0,0" Opacity="0.7" TextWrapping="Wrap"/>
             <TextBlock x:Name="VersionText" Margin="0,4,0,0" Opacity="0.7"/>
+
+            <TextBlock Text="Resource profile" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+            <ComboBox x:Name="ResourceProfileCombo" Width="180" Margin="0,8,0,0" HorizontalAlignment="Left">
+              <ComboBoxItem Content="Balanced" IsSelected="True"/>
+              <ComboBoxItem Content="LowMemory"/>
+              <ComboBoxItem Content="Performance"/>
+              <ComboBoxItem Content="Manual"/>
+            </ComboBox>
+            <TextBlock x:Name="ResourceProfileHintText" Margin="0,6,0,0" Opacity="0.75" FontSize="12" TextWrapping="Wrap"
+                       Text="LowMemory giam context/maxTokens khi RAM thap. Performance chi khi con nhieu RAM trong."/>
 
             <TextBlock Text="Host impact (portable drive)" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
             <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Opacity="0.75" FontSize="12"
@@ -391,6 +444,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
               <Button Content="Scan host impact" Click="ScanHostImpact_Click"/>
               <Button Content="Safe eject (cleanup)" Click="SafeEject_Click"/>
+              <Button Content="Delete chat" Click="DeleteChat_Click"/>
             </StackPanel>
             <TextBlock x:Name="HostImpactText" Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.85"/>
 
@@ -405,5 +459,6 @@
         </ScrollViewer>
       </TabItem>
     </TabControl>
-  </DockPanel>
+    </DockPanel>
+  </Grid>
 </Window>

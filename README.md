@@ -3,7 +3,7 @@
 Portable Windows toolkit for an **external drive**: monitor · clean · RAM · local AI · network QoS · startup · tips · auto-update.
 
 **GitHub:** https://github.com/LLLVPN4423/optimizeTools  
-**Version:** 0.4.0
+**Version:** 0.5.0 (OptiForge 3.0 foundation)
 
 ## Requirements
 
