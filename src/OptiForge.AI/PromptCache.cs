@@ -47,6 +47,18 @@ public sealed class PromptCache
         File.WriteAllText(path, payload);
     }
 
+    public int CountEntries()
+    {
+        try
+        {
+            return Directory.Exists(_dir) ? Directory.EnumerateFiles(_dir, "*.json").Count() : 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
     private string PathFor(string modelKey, string prompt, string? modeKey)
     {
         var raw = modelKey + "\n" + (modeKey ?? "") + "\n" + prompt;

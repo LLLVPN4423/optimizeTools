@@ -78,6 +78,7 @@ public partial class MainWindow : Window
         VersionText.Text = "Version: " + _updates.CurrentVersion;
         RefreshStartupList();
         InitAiUi();
+        RefreshQuotaUi();
 
         _ = RefreshAiStatusAsync();
         RefreshMonitor();
@@ -298,7 +299,8 @@ public partial class MainWindow : Window
         SendAiBtn.IsEnabled = false;
         AppendAiChat("You", prompt);
         AiPromptBox.Clear();
-        AiMetaText.Text = "Thinking...";
+        AiMetaText.Text = "Streaming...";
+        BeginAiStreamSlot();
         AiChatBox.ScrollToEnd();
 
         try
@@ -309,10 +311,18 @@ public partial class MainWindow : Window
                 ? _aiHistory.Take(_aiHistory.Count - 1).ToList()
                 : null;
 
-            var (fromCache, response) = await _ai.ChatAsync(prompt, useCache, _aiMode, history);
-            AppendAiChat("AI", response);
-            AiMetaText.Text = (fromCache ? "Cache | " : "Fresh | ") + _aiMode.Title + " | Ctrl+Enter to send";
+            var (fromCache, response) = await _ai.ChatStreamingAsync(
+                prompt,
+                delta => Dispatcher.Invoke(() => AppendAiStreamDelta(delta)),
+                useCache,
+                _aiMode,
+                history);
+
+            FinalizeAiStream(response);
+            AiMetaText.Text = (fromCache ? "Cache | " : "Stream | ") + _aiMode.Title +
+                              " | Cloud brief de keo dai free tier";
             AiChatBox.ScrollToEnd();
+            RefreshQuotaUi();
         }
         catch (Exception ex)
         {
@@ -326,9 +336,50 @@ public partial class MainWindow : Window
         }
     }
 
+    private int _aiStreamStart = -1;
+
+    private void BeginAiStreamSlot()
+    {
+        if (AiChatBox.Text.StartsWith("Chon che do", StringComparison.Ordinal) ||
+            AiChatBox.Text.StartsWith("Chat cleared", StringComparison.Ordinal))
+            AiChatBox.Clear();
+
+        if (!string.IsNullOrWhiteSpace(AiChatBox.Text))
+            AiChatBox.AppendText(Environment.NewLine + Environment.NewLine);
+        AiChatBox.AppendText("[AI] ");
+        _aiStreamStart = AiChatBox.Text.Length;
+    }
+
+    private void AppendAiStreamDelta(string delta)
+    {
+        AiChatBox.AppendText(delta);
+        AiChatBox.ScrollToEnd();
+    }
+
+    private void FinalizeAiStream(string full)
+    {
+        if (_aiStreamStart >= 0 && _aiStreamStart <= AiChatBox.Text.Length)
+        {
+            // Ensure final text matches (cache path may dump all at once)
+            var prefix = AiChatBox.Text[.._aiStreamStart];
+            AiChatBox.Text = prefix + full.Trim();
+        }
+        else
+        {
+            AppendAiChat("AI", full);
+            return;
+        }
+
+        _aiHistory.Add(("assistant", full.Trim()));
+        while (_aiHistory.Count > 8)
+            _aiHistory.RemoveAt(0);
+        _aiStreamStart = -1;
+    }
+
     private void AppendAiChat(string who, string text)
     {
-        if (AiChatBox.Text.StartsWith("Chon che do", StringComparison.Ordinal))
+        if (AiChatBox.Text.StartsWith("Chon che do", StringComparison.Ordinal) ||
+            AiChatBox.Text.StartsWith("Chat cleared", StringComparison.Ordinal))
             AiChatBox.Clear();
 
         var role = who switch
@@ -351,6 +402,64 @@ public partial class MainWindow : Window
         sb.AppendLine(text.Trim());
         AiChatBox.Text = sb.ToString().TrimStart();
     }
+
+    private void RefreshQuotaUi()
+    {
+        if (QuotaStatsText is null) return;
+        var s = _ai.Quota.GetStats();
+        QuotaStatsText.Text = s.Summary;
+        if (QuotaTipsText is not null)
+            QuotaTipsText.Text = string.Join("\n", QuotaSaver.FreeTierTips.Select((t, i) => $"{i + 1}. {t}"));
+    }
+
+    private void QuotaRefresh_Click(object sender, RoutedEventArgs e) => RefreshQuotaUi();
+
+    private void CopyCloudBrief_Click(object sender, RoutedEventArgs e)
+    {
+        var lastUser = _aiHistory.LastOrDefault(x => x.role == "user").content ?? "";
+        var lastAi = _aiHistory.LastOrDefault(x => x.role == "assistant").content ?? "";
+        if (string.IsNullOrWhiteSpace(lastUser) && string.IsNullOrWhiteSpace(lastAi))
+        {
+            MessageBox.Show("Hay chat/draft o tab AI truoc, roi Copy cloud brief.", "Quota Saver",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var brief = _ai.Quota.BuildCloudPolishBrief(lastUser, _aiHistory, lastAi);
+        try
+        {
+            Clipboard.SetText(brief);
+            _ai.Quota.RecordCloudBrief();
+            RefreshQuotaUi();
+            AiMetaText.Text = "Cloud brief copied ? paste vao ChatGPT/Gemini/Claude.";
+            StatusText.Text = "Cloud brief ready";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Quota Saver", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void CopyBatchTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        var lines = (QuotaBatchBox.Text ?? "")
+            .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var text = _ai.Quota.BuildBatchPrompt(lines);
+        try
+        {
+            Clipboard.SetText(text);
+            StatusText.Text = "Batch prompt copied";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Quota Saver", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void OpenChatGpt_Click(object sender, RoutedEventArgs e) => QuotaSaver.OpenUrl("https://chatgpt.com/");
+    private void OpenGemini_Click(object sender, RoutedEventArgs e) => QuotaSaver.OpenUrl("https://gemini.google.com/app");
+    private void OpenClaude_Click(object sender, RoutedEventArgs e) => QuotaSaver.OpenUrl("https://claude.ai/new");
+    private void OpenPerplexity_Click(object sender, RoutedEventArgs e) => QuotaSaver.OpenUrl("https://www.perplexity.ai/");
 
     private void ClearAiChat_Click(object sender, RoutedEventArgs e)
     {

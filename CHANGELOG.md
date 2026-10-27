@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Honest hybrid AI: local 3B for routine work; cloud for polish (not claiming Claude-level quality)
+- **Quota Saver** tab: stats, cloud brief, batch template, open ChatGPT/Gemini/Claude/Perplexity
+- AI streaming replies + smarter assistant system prompt + Cloud brief from AI tab
+- Playbook: keo dai free tier
+
 ## 0.2.2
 
 - AI UX: chế độ sẵn (hỏi đáp, giải thích, dịch, tóm tắt, viết lại, tối ưu PC, code nhỏ, checklist)

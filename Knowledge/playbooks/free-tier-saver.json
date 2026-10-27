@@ -1,0 +1,13 @@
+{
+  "id": "free-tier-saver",
+  "title": "Keo dai free tier ChatGPT / Gemini / Claude",
+  "steps": [
+    "Hieu ro: local Qwen 3B khong ngang Claude/GPT — dung de giam so tin nhan cloud.",
+    "Viec de (dich, tom tat, viet lai, checklist, draft): tab AI local + Cache.",
+    "Viec kho: tab Quota → Copy cloud brief → Open ChatGPT/Gemini/Claude → paste 1 lan.",
+    "Batch nhieu viec nho thanh 1 prompt cloud (Copy batch template).",
+    "Xoay vong: het limit Claude (~5h) → Gemini → ChatGPT (hoac nguoc lai).",
+    "Doi chu de tren cloud: chat moi + chi mang brief, khong paste ca lich su dai.",
+    "Xem Quota stats: cache hit / local gen = so request cloud da tranh duoc."
+  ]
+}

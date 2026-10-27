@@ -31,7 +31,7 @@ public sealed class AiBootstrapper
     {
         _paths = paths;
         _http = new HttpClient { Timeout = TimeSpan.FromHours(6) };
-        _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("OptiForge", "0.2.2"));
+        _http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("OptiForge", "0.3.0"));
     }
 
     public async Task<(bool ok, string message)> EnsureRuntimeAsync(

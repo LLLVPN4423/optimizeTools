@@ -8,6 +8,7 @@ public sealed class LocalAiService : IAsyncDisposable
     private readonly AppSettings _settings;
     public LlamaServerHost Host { get; }
     public PromptCache Cache { get; }
+    public QuotaSaver Quota { get; }
 
     public LocalAiService(PortablePaths paths, AppSettings settings)
     {
@@ -15,6 +16,7 @@ public sealed class LocalAiService : IAsyncDisposable
         _settings = settings;
         Host = new LlamaServerHost(paths, settings.AiPort);
         Cache = new PromptCache(paths);
+        Quota = new QuotaSaver(paths, Cache);
     }
 
     public async Task<AiStatus> GetStatusAsync(CancellationToken ct = default)
@@ -38,7 +40,7 @@ public sealed class LocalAiService : IAsyncDisposable
 
     public Task StopServerAsync() => Host.StopAsync();
 
-    public Task<(bool fromCache, string response)> ChatAsync(
+    public async Task<(bool fromCache, string response)> ChatAsync(
         string prompt,
         bool useCache = true,
         AiAssistMode? mode = null,
@@ -46,7 +48,7 @@ public sealed class LocalAiService : IAsyncDisposable
         CancellationToken ct = default)
     {
         mode ??= AiAssistModes.Default;
-        return Host.ChatAsync(
+        var result = await Host.ChatAsync(
             prompt,
             Cache,
             useCache,
@@ -56,6 +58,41 @@ public sealed class LocalAiService : IAsyncDisposable
             maxTokens: mode.MaxTokens,
             history: history,
             ct: ct);
+        if (result.fromCache) Quota.RecordCacheHit();
+        else if (!result.response.StartsWith("Server chưa", StringComparison.Ordinal) &&
+                 !result.response.StartsWith("Prompt trống", StringComparison.Ordinal) &&
+                 !result.response.StartsWith("API error", StringComparison.Ordinal))
+            Quota.RecordLocalGeneration();
+        return result;
+    }
+
+    public async Task<(bool fromCache, string response)> ChatStreamingAsync(
+        string prompt,
+        Action<string> onDelta,
+        bool useCache = true,
+        AiAssistMode? mode = null,
+        IReadOnlyList<(string role, string content)>? history = null,
+        CancellationToken ct = default)
+    {
+        mode ??= AiAssistModes.Default;
+        var result = await Host.ChatStreamingAsync(
+            prompt,
+            Cache,
+            onDelta,
+            useCache,
+            systemPrompt: mode.SystemPrompt,
+            modeKey: mode.Id,
+            temperature: mode.Temperature,
+            maxTokens: mode.MaxTokens,
+            history: history,
+            ct: ct);
+        if (result.fromCache) Quota.RecordCacheHit();
+        else if (!string.IsNullOrWhiteSpace(result.response) &&
+                 !result.response.StartsWith("Server chưa", StringComparison.Ordinal) &&
+                 !result.response.StartsWith("Prompt trống", StringComparison.Ordinal) &&
+                 !result.response.StartsWith("API error", StringComparison.Ordinal))
+            Quota.RecordLocalGeneration();
+        return result;
     }
 
     private static string BuildMessage(string? runtime, string? model, bool running)

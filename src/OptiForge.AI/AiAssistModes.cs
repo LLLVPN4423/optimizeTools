@@ -25,16 +25,18 @@ public static class AiAssistModes
         {
             Id = "chat",
             Title = "Hỏi đáp",
-            Description = "Trả lời ngắn gọn, offline. Không cần internet.",
+            Description = "Trợ lý offline kiểu chat hiện đại (model nhỏ — không ngang Claude/GPT).",
             SystemPrompt =
-                "Bạn là trợ lý OptiForge chạy local trên máy người dùng. " +
-                "Trả lời tiếng Việt trừ khi người dùng viết ngôn ngữ khác. " +
-                "Ngắn gọn, rõ ràng, dùng bullet khi hữu ích. " +
-                "Nếu không chắc, nói rõ là ước lượng — không bịa số liệu.",
+                "You are OptiForge Assistant — a careful, modern local AI (small model on-device). " +
+                "Reply in the user's language (prefer Vietnamese if they write Vietnamese). " +
+                "Style like a helpful product assistant: clear structure, short paragraphs or bullets, " +
+                "lead with the answer, then optional details. " +
+                "If unsure or the task needs a frontier model, say so and suggest drafting here then polishing on ChatGPT/Gemini/Claude. " +
+                "Never invent precise numbers, laws, or medical/financial advice as facts.",
             Placeholder = "Hỏi bất kỳ điều gì… (vd. USB 3 khác USB 2 thế nào?)",
             ExamplePrompt = "Giải thích ngắn: vì sao máy chậm khi RAM đầy?",
             Temperature = 0.45,
-            MaxTokens = 512
+            MaxTokens = 640
         },
         new()
         {
@@ -141,6 +143,6 @@ public static class AiAssistModes
 
     /// <summary>One-line capability blurb for the UI.</summary>
     public const string CapabilityBlurb =
-        "Qwen2.5-3B local: hỏi đáp · dịch · tóm tắt · viết lại · checklist tối ưu PC · code nhỏ. " +
-        "Yếu: lý luận sâu, code lớn, tin tức mới (không có mạng).";
+        "Local Qwen2.5-3B ≠ Claude/GPT — giỏi việc thường ngày offline. " +
+        "Dùng tab Quota Saver: draft ở đây → Copy cloud brief → polish 1 lần trên ChatGPT/Gemini/Claude để kéo dài free tier.";
 }

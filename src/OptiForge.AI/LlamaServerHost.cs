@@ -191,6 +191,100 @@ public sealed class LlamaServerHost : IAsyncDisposable
         return (false, text);
     }
 
+    /// <summary>Stream tokens (SSE) for a ChatGPT-like feel; falls back to non-stream ChatAsync.</summary>
+    public async Task<(bool fromCache, string response)> ChatStreamingAsync(
+        string prompt,
+        PromptCache cache,
+        Action<string> onDelta,
+        bool useCache = true,
+        string? systemPrompt = null,
+        string? modeKey = null,
+        double temperature = 0.4,
+        int maxTokens = 512,
+        IReadOnlyList<(string role, string content)>? history = null,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+            return (false, "Prompt trống.");
+
+        var modelKey = ModelPath ?? $"port:{_port}";
+        var cacheKey = (modeKey ?? "chat") + "\n" + (systemPrompt ?? "") + "\n" + prompt;
+        var canCache = useCache && (history is null || history.Count == 0);
+        if (canCache && cache.TryGet(modelKey, cacheKey, out var cached, modeKey))
+        {
+            onDelta(cached);
+            return (true, cached);
+        }
+
+        if (!await IsReachableAsync(ct))
+            return (false, "Server chưa chạy. Bấm Start server trước.");
+
+        var messagesJson = BuildMessagesJson(systemPrompt, history, prompt);
+        var temp = temperature.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var body = $$"""
+        {
+          "model": "local",
+          "messages": {{messagesJson}},
+          "temperature": {{temp}},
+          "max_tokens": {{maxTokens}},
+          "stream": true
+        }
+        """;
+
+        using var req = new HttpRequestMessage(HttpMethod.Post, $"http://127.0.0.1:{_port}/v1/chat/completions");
+        req.Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json");
+        using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+        if (!resp.IsSuccessStatusCode)
+        {
+            var fallback = await ChatAsync(prompt, cache, useCache, systemPrompt, modeKey, temperature, maxTokens, history, ct);
+            if (!fallback.fromCache && !string.IsNullOrEmpty(fallback.response))
+                onDelta(fallback.response);
+            return fallback;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            var line = await reader.ReadLineAsync(ct);
+            if (line is null) break;
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) continue;
+            var data = line["data:".Length..].Trim();
+            if (data is "[DONE]") break;
+
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(data);
+                var choices = doc.RootElement.GetProperty("choices");
+                if (choices.GetArrayLength() == 0) continue;
+                var delta = choices[0].GetProperty("delta");
+                if (delta.TryGetProperty("content", out var c))
+                {
+                    var piece = c.GetString();
+                    if (!string.IsNullOrEmpty(piece))
+                    {
+                        sb.Append(piece);
+                        onDelta(piece);
+                    }
+                }
+            }
+            catch
+            {
+                // skip malformed SSE chunk
+            }
+        }
+
+        var text = sb.ToString();
+        if (string.IsNullOrWhiteSpace(text))
+            return await ChatAsync(prompt, cache, useCache, systemPrompt, modeKey, temperature, maxTokens, history, ct);
+
+        if (canCache) cache.Set(modelKey, cacheKey, text, modeKey);
+        return (false, text);
+    }
+
     private static string BuildMessagesJson(
         string? systemPrompt,
         IReadOnlyList<(string role, string content)>? history,

@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="OptiForge"
-        Height="560" Width="840"
-        MinHeight="480" MinWidth="720"
+        Height="640" Width="920"
+        MinHeight="520" MinWidth="780"
         Background="#FF121418"
         Foreground="#FFE8EAED"
         WindowStartupLocation="CenterScreen">
@@ -201,14 +201,51 @@
                      Padding="8" PreviewKeyDown="AiPromptBox_PreviewKeyDown"/>
             <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Bottom">
               <Button x:Name="SendAiBtn" Content="Gửi" Click="SendAi_Click"
-                      Margin="0,0,0,6" MinWidth="72"
-                      ToolTip="Ctrl+Enter để gửi"/>
-              <Button Content="Xóa chat" Click="ClearAiChat_Click" MinWidth="72" Margin="0,0,0,6"/>
-              <Button Content="Copy" Click="CopyAi_Click" MinWidth="72"/>
+                      Margin="0,0,0,6" MinWidth="88"
+                      ToolTip="Ctrl+Enter — stream trả lời"/>
+              <Button Content="Cloud brief" Click="CopyCloudBrief_Click" MinWidth="88" Margin="0,0,0,6"
+                      ToolTip="Copy prompt ngắn để paste ChatGPT/Gemini/Claude (tiết kiệm quota)"/>
+              <Button Content="Xóa chat" Click="ClearAiChat_Click" MinWidth="88" Margin="0,0,0,6"/>
+              <Button Content="Copy" Click="CopyAi_Click" MinWidth="88"/>
             </StackPanel>
           </Grid>
           <TextBlock x:Name="AiMetaText" Grid.Row="6" Margin="0,6,0,0" Opacity="0.7" FontSize="12"/>
         </Grid>
+      </TabItem>
+
+      <TabItem Header="Quota">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="8">
+            <TextBlock Text="Free-tier Saver" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.8"
+                       Text="Local 3B khong bang Claude/GPT — nhung dung dung de keo dai free tier: viec de o day, cloud chi polish 1 lan."/>
+            <TextBlock x:Name="QuotaStatsText" Margin="0,12,0,0" TextWrapping="Wrap" FontWeight="SemiBold"/>
+
+            <TextBlock Text="1) Draft local → 2) Copy cloud brief → 3) Mo site → paste" Margin="0,16,0,8" Opacity="0.9"/>
+            <StackPanel Orientation="Horizontal">
+              <Button Content="Refresh stats" Click="QuotaRefresh_Click"/>
+              <Button Content="Copy cloud brief" Click="CopyCloudBrief_Click"
+                      ToolTip="Can co chat/draft o tab AI truoc"/>
+              <Button Content="Copy batch template" Click="CopyBatchTemplate_Click"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+              <Button Content="Open ChatGPT" Click="OpenChatGpt_Click"/>
+              <Button Content="Open Gemini" Click="OpenGemini_Click"/>
+              <Button Content="Open Claude" Click="OpenClaude_Click"/>
+              <Button Content="Open Perplexity" Click="OpenPerplexity_Click"/>
+            </StackPanel>
+
+            <TextBlock Text="Tips keo dai quota" FontSize="14" FontWeight="SemiBold" Margin="0,18,0,8"/>
+            <TextBlock x:Name="QuotaTipsText" TextWrapping="Wrap" Opacity="0.9" LineHeight="20"/>
+
+            <TextBox x:Name="QuotaBatchBox" Margin="0,16,0,0" MinHeight="90" AcceptsReturn="True"
+                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                     Background="#FF1C212B" Foreground="#FFE8EAED" BorderBrush="#FF3D4450" Padding="8"
+                     Text="Viec 1: ...&#x0a;Viec 2: ...&#x0a;Viec 3: ..."/>
+            <TextBlock Margin="0,6,0,0" Opacity="0.65" FontSize="12"
+                       Text="Batch template: moi dong = 1 viec → Copy batch → 1 tin nhan cloud thay vi nhieu lan."/>
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
 
       <TabItem Header="Network">
