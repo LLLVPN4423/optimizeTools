@@ -1,0 +1,11 @@
+{
+  "id": "slow-pc",
+  "title": "Máy chậm — checklist nhanh",
+  "steps": [
+    "Xem Dashboard: RAM > 85% hoặc Disk free < 15% là tín hiệu đỏ.",
+    "Đóng trình duyệt nhiều tab / app nền không cần.",
+    "Chạy Clean (dry-run) rồi clean temp an toàn.",
+    "Nếu RAM cao sau khi đóng app: thử RAM Trim (cần admin).",
+    "Tránh registry cleaner; ưu tiên temp/cache chính thức của Windows."
+  ]
+}

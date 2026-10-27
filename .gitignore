@@ -1,0 +1,38 @@
+## Build
+**/bin/
+**/obj/
+**/.vs/
+*.user
+*.suo
+*.cache
+
+## App runtime data (keep folder, ignore contents)
+App/data/*
+!App/data/.gitkeep
+
+## Published binaries in App/ (rebuild via scripts\publish-portable.bat)
+App/*.dll
+App/*.exe
+App/*.pdb
+App/*.json
+App/*.xml
+!App/data/
+
+## Models (too large for git — keep on drive)
+Models/fast/*
+Models/quality/*
+!Models/fast/.gitkeep
+!Models/quality/.gitkeep
+!Models/**/README.md
+
+## Llama runtime binaries
+Runtime/llama/*
+!Runtime/llama/.gitkeep
+!Runtime/llama/README.md
+
+## Logs / caches
+*.log
+*.db
+*.db-journal
+.DS_Store
+Thumbs.db

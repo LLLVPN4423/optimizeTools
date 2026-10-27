@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\OptiForge.Core\OptiForge.Core.csproj" />
+    <ProjectReference Include="..\OptiForge.System\OptiForge.System.csproj" />
+    <ProjectReference Include="..\OptiForge.AI\OptiForge.AI.csproj" />
+    <ProjectReference Include="..\OptiForge.Update\OptiForge.Update.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+</Project>

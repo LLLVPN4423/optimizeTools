@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="OptiForge.AI/OptiForge.AI.csproj" />
+  <Project Path="OptiForge.App/OptiForge.App.csproj" />
+  <Project Path="OptiForge.Core/OptiForge.Core.csproj" />
+  <Project Path="OptiForge.System/OptiForge.System.csproj" />
+  <Project Path="OptiForge.Update/OptiForge.Update.csproj" />
+</Solution>

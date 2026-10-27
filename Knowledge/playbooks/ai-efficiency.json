@@ -1,0 +1,11 @@
+{
+  "id": "ai-efficiency",
+  "title": "Dùng AI hiệu quả (local + free tier)",
+  "steps": [
+    "Ưu tiên model local trên ổ rời khi offline hoặc hết quota web.",
+    "Prompt ngắn, 1 nhiệm vụ / 1 lần hỏi.",
+    "Tận dụng prompt cache trong OptiForge (Phase 5) để khỏi gọi lại.",
+    "Máy 8GB RAM: chỉ dùng Models/fast (~3B). Máy 16GB+: có thể bật quality.",
+    "Ổ rời nên USB 3 / SSD — HDD USB 2 rất chậm khi load GGUF."
+  ]
+}
