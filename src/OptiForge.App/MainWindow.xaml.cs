@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Threading;
@@ -29,11 +30,14 @@ public partial class MainWindow : Window
 
         _paths = new PortablePaths();
         _settings = AppSettings.Load(_paths);
-        _ai = new LocalAiService(_paths);
+        _ai = new LocalAiService(_paths, _settings);
 
         RootPathText.Text = "Root: " + _paths.Root;
         SettingsPathText.Text = "Settings: " + _paths.SettingsPath;
         DryRunCheck.IsChecked = _settings.DryRunCleanByDefault;
+        AdminStatusText.Text = RamTrimmer.IsRunningAsAdministrator()
+            ? "?ang ch?y v?i quy?n Administrator."
+            : "Kh?ng ph?i admin ? standby list s? b? b? qua (working-set trim v?n ch?y).";
 
         foreach (var def in _cleaner.Categories)
         {
@@ -46,11 +50,8 @@ public partial class MainWindow : Window
             });
         }
         CleanList.ItemsSource = _cleanRows;
-        AdminStatusText.Text = RamTrimmer.IsRunningAsAdministrator()
-            ? "?ang ch?y v?i quy?n Administrator."
-            : "Kh?ng ph?i admin ? standby list s? b? b? qua (working-set trim v?n ch?y).";
 
-        RefreshAiStatus();
+        _ = RefreshAiStatusAsync();
         RefreshMonitor();
 
         _timer = new DispatcherTimer
@@ -60,10 +61,11 @@ public partial class MainWindow : Window
         _timer.Tick += (_, _) => RefreshMonitor();
         _timer.Start();
 
-        Closed += (_, _) =>
+        Closed += async (_, _) =>
         {
             _timer.Stop();
             _monitor.Dispose();
+            await _ai.DisposeAsync();
         };
     }
 
@@ -81,13 +83,70 @@ public partial class MainWindow : Window
         StatusText.Text = s.Timestamp.ToString("HH:mm:ss");
     }
 
-    private void RefreshAiStatus()
+    private async Task RefreshAiStatusAsync()
     {
-        var st = _ai.GetStatus();
+        var st = await _ai.GetStatusAsync();
         AiStatusText.Text = st.Message;
+        if (!string.IsNullOrWhiteSpace(st.ActiveModelPath))
+            AiMetaText.Text = "Model: " + Path.GetFileName(st.ActiveModelPath);
     }
 
-    private void RefreshAi_Click(object sender, RoutedEventArgs e) => RefreshAiStatus();
+    private async void RefreshAi_Click(object sender, RoutedEventArgs e)
+        => await RefreshAiStatusAsync();
+
+    private async void StartAi_Click(object sender, RoutedEventArgs e)
+    {
+        StartAiBtn.IsEnabled = false;
+        AiStatusText.Text = "Starting llama-server (c? th? m?t 30?90s tr?n HDD)?";
+        try
+        {
+            var (ok, msg) = await _ai.StartServerAsync();
+            AiStatusText.Text = msg;
+            if (!ok)
+                MessageBox.Show(msg, "OptiForge AI", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            AiStatusText.Text = ex.Message;
+        }
+        finally
+        {
+            StartAiBtn.IsEnabled = true;
+            await RefreshAiStatusAsync();
+        }
+    }
+
+    private async void StopAi_Click(object sender, RoutedEventArgs e)
+    {
+        await _ai.StopServerAsync();
+        AiStatusText.Text = "Server stopped.";
+        await RefreshAiStatusAsync();
+    }
+
+    private async void SendAi_Click(object sender, RoutedEventArgs e)
+    {
+        var prompt = AiPromptBox.Text?.Trim() ?? "";
+        if (prompt.Length == 0) return;
+
+        SendAiBtn.IsEnabled = false;
+        AiResponseBox.Text = "Thinking?";
+        AiMetaText.Text = "";
+        try
+        {
+            var useCache = UseCacheCheck.IsChecked == true;
+            var (fromCache, response) = await _ai.ChatAsync(prompt, useCache);
+            AiResponseBox.Text = response;
+            AiMetaText.Text = fromCache ? "Cache hit ? kh?ng g?i model." : "Fresh generation";
+        }
+        catch (Exception ex)
+        {
+            AiResponseBox.Text = ex.Message;
+        }
+        finally
+        {
+            SendAiBtn.IsEnabled = true;
+        }
+    }
 
     private async void TrimRam_Click(object sender, RoutedEventArgs e)
     {

@@ -41,7 +41,7 @@ OptiForge/
 | 2 | Dashboard CPU/RAM/Disk | done (basic) |
 | 3 | Disk clean + dry-run | done |
 | 4 | RAM trim | done |
-| 5 | llama.cpp chat + cache | planned |
+| 5 | llama.cpp chat + cache | done |
 | 6 | Knowledge playbooks UI | planned |
 | 7 | GitHub self-update | stub |
 | 8 | Bundle polish ≤10GB | planned |

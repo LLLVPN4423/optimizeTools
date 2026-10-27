@@ -34,5 +34,7 @@ Runtime/llama/*
 *.log
 *.db
 *.db-journal
+App/data/prompt-cache/
+App/data/logs/
 .DS_Store
 Thumbs.db
