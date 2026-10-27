@@ -213,6 +213,60 @@
         </Grid>
       </TabItem>
 
+      <TabItem Header="Agent">
+        <Grid Margin="8">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <TextBlock Text="Local Agent" FontSize="16" FontWeight="SemiBold"/>
+          <TextBlock Grid.Row="1" Margin="0,6,0,0" TextWrapping="Wrap" Opacity="0.75" FontSize="12"
+                     Text="Tao project tu chat (template-first, sandbox trong Projects/). Khong bang Cursor Agent — nhung dung local + co the noi LM Studio."/>
+
+          <StackPanel Grid.Row="2" Margin="0,10,0,8">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="Backend" VerticalAlignment="Center" Margin="0,0,8,0" Opacity="0.8"/>
+              <ComboBox x:Name="AgentBackendCombo" Width="140" Margin="0,0,12,0"
+                        SelectionChanged="AgentBackendCombo_SelectionChanged">
+                <ComboBoxItem Content="Builtin (3B)" Tag="builtin" IsSelected="True"/>
+                <ComboBoxItem Content="LM Studio" Tag="lmstudio"/>
+              </ComboBox>
+              <TextBox x:Name="LmStudioUrlBox" Width="220" Text="http://127.0.0.1:1234/v1"
+                       Background="#FF1C212B" Foreground="#FFE8EAED" BorderBrush="#FF3D4450" Padding="6" Margin="0,0,8,0"/>
+              <Button Content="Probe" Click="AgentProbe_Click"/>
+            </StackPanel>
+            <TextBlock x:Name="AgentBackendStatusText" Margin="0,6,0,0" Opacity="0.85" FontSize="12" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+              <TextBlock Text="Template" VerticalAlignment="Center" Margin="0,0,8,0" Opacity="0.8"/>
+              <ComboBox x:Name="AgentTemplateCombo" Width="160" Margin="0,0,12,0">
+                <ComboBoxItem Content="Auto" Tag="auto" IsSelected="True"/>
+                <ComboBoxItem Content="HTML static" Tag="html-static"/>
+                <ComboBoxItem Content="C# console" Tag="csharp-console"/>
+                <ComboBoxItem Content="Python CLI" Tag="python-cli"/>
+                <ComboBoxItem Content="Node mini" Tag="nodejs-mini"/>
+              </ComboBox>
+              <CheckBox x:Name="AgentDryRunCheck" Content="Dry-run" IsChecked="True"
+                        Foreground="#FFE8EAED" VerticalAlignment="Center" Margin="0,0,12,0"/>
+              <Button Content="Plan" Click="AgentPlan_Click"/>
+              <Button Content="Create project" Click="AgentCreate_Click"/>
+              <Button Content="Open Projects" Click="AgentOpenProjects_Click"/>
+            </StackPanel>
+            <TextBox x:Name="AgentPromptBox" Margin="0,10,0,0" MinHeight="64" AcceptsReturn="True"
+                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                     Background="#FF1C212B" Foreground="#FFE8EAED" BorderBrush="#FF3D4450" Padding="8"
+                     Text="Tao trang HTML portfolio don gian cho Freelancer, co CSS dep, 1 trang."/>
+          </StackPanel>
+
+          <TextBox x:Name="AgentLogBox" Grid.Row="3" IsReadOnly="True" AcceptsReturn="True"
+                   TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                   Background="#FF161A22" Foreground="#FFE8EAED" BorderBrush="#FF3D4450" Padding="10"/>
+          <TextBlock x:Name="AgentMetaText" Grid.Row="4" Margin="0,8,0,0" Opacity="0.75" FontSize="12" TextWrapping="Wrap"/>
+        </Grid>
+      </TabItem>
+
       <TabItem Header="Quota">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel Margin="8">

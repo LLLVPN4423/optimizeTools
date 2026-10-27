@@ -1,0 +1,13 @@
+{
+  "id": "local-agent-lmstudio",
+  "title": "Local Agent + LM Studio (giong Cursor nhe)",
+  "steps": [
+    "Hieu ro: Cursor/Claude Agent can model manh + tool loop. OptiForge Agent = template-first scaffold (tao project nho), khong thay Cursor day du.",
+    "May 8GB + GTX 1650: builtin 3B OK cho scaffold; LM Studio 3B-7B Q4 tren D: tot hon cho chat/code.",
+    "Cai LM Studio tren D: → tai Qwen2.5 3B/7B Instruct Q4 → Developer → Start Server (port 1234).",
+    "OptiForge Settings/Agent: Backend = LM Studio, URL http://127.0.0.1:1234/v1 → Probe.",
+    "Tab Agent: mo ta project (vd. trang HTML portfolio) → Plan → Create (ghi vao Projects/).",
+    "Muon Agent trong VS Code nhu Cursor lite: Continue.dev + LM Studio (khong can OptiForge).",
+    "Muon agent tu tri manh: Aider/OpenHands + model lon — can RAM 16GB+; con 8GB thi dung Quota cloud brief."
+  ]
+}

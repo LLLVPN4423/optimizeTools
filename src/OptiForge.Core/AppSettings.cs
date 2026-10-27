@@ -10,6 +10,9 @@ public sealed class AppSettings
     public bool EnableAiOnLaunch { get; set; }
     public int AiPort { get; set; } = 8081;
     public string PreferredModelTier { get; set; } = "fast"; // fast | quality | auto
+    /// <summary>builtin = OptiForge llama-server; lmstudio = OpenAI-compatible local server.</summary>
+    public string AiBackend { get; set; } = "builtin";
+    public string LmStudioUrl { get; set; } = "http://127.0.0.1:1234/v1";
     public bool DryRunCleanByDefault { get; set; } = true;
     public int MonitorIntervalMs { get; set; } = 1000;
     /// <summary>On exit: stop llama from this drive + remove OptiForge QoS policies.</summary>

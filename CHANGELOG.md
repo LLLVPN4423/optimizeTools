@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- **Local Agent** tab: chat → plan → scaffold project under `Projects/` (html/csharp/python/node)
+- Backend switch: Builtin llama-server **or LM Studio** (`http://127.0.0.1:1234/v1`)
+- Research-aligned hybrid: template-first harness (small models) + playbook for Continue/Aider/OpenHands path
+- Honest scope: not full Cursor Agent — local project starter + LM Studio bridge
+
 ## 0.3.0
 
 - Honest hybrid AI: local 3B for routine work; cloud for polish (not claiming Claude-level quality)

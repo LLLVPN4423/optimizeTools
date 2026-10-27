@@ -3,7 +3,7 @@
 Portable Windows toolkit for an **external drive**: monitor · clean · RAM · local AI · network QoS · startup · tips · auto-update.
 
 **GitHub:** https://github.com/LLLVPN4423/optimizeTools  
-**Version:** 0.3.0
+**Version:** 0.4.0
 
 ## Requirements
 
@@ -29,6 +29,7 @@ Then in app → **AI** → **Download AI runtime+model** → **Start server** �
 | Clean | Safe temp clean + dry-run |
 | RAM | Working-set trim + standby (admin) |
 | AI | Local Qwen2.5-3B streaming chat + modes (not Claude-level) |
+| Agent | Create small projects from chat; Backend = Builtin or LM Studio |
 | Quota | Free-tier Saver: local draft → cloud brief → ChatGPT/Gemini/Claude |
 | Network | Per-process KB/s limit via Windows QoS (admin) |
 | Startup | HKCU Run disable/enable with backup (debloat-lite) |

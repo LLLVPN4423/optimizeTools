@@ -32,5 +32,10 @@ App/data/logs/
 App/data/*.zip
 App/data/update-extract/
 App/data/apply-update.bat
+
+## Agent-generated projects (local only)
+Projects/*
+!Projects/.gitkeep
+
 .DS_Store
 Thumbs.db

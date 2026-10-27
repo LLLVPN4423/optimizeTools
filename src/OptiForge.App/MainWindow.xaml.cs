@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     private readonly NetworkThrottle _net = new();
     private readonly StartupManager _startup = new();
     private readonly HostCleanupService _hostCleanup;
+    private readonly ProjectAgent _agent;
     private readonly DispatcherTimer _timer;
     private readonly ObservableCollection<CleanRow> _cleanRows = [];
     private readonly ObservableCollection<Playbook> _playbooks = [];
@@ -36,6 +37,7 @@ public partial class MainWindow : Window
     private bool _exitCleanupDone;
     private readonly List<(string role, string content)> _aiHistory = [];
     private AiAssistMode _aiMode = AiAssistModes.Default;
+    private AgentPlan? _lastAgentPlan;
 
     public MainWindow()
     {
@@ -47,12 +49,15 @@ public partial class MainWindow : Window
         _autoUpdater = new AutoUpdater(_paths);
         _aiSetup = new AiBootstrapper(_paths);
         _hostCleanup = new HostCleanupService(_paths);
+        _agent = new ProjectAgent(_paths);
 
         RootPathText.Text = "Root: " + _paths.Root;
         SettingsPathText.Text = "Settings: " + _paths.SettingsPath;
         DryRunCheck.IsChecked = _settings.DryRunCleanByDefault;
         AutoCleanupCheck.IsChecked = _settings.AutoCleanupHostOnExit;
         RestoreStartupsCheck.IsChecked = _settings.RestoreStartupsOnExit;
+        LmStudioUrlBox.Text = _settings.LmStudioUrl;
+        SelectBackendCombo(_settings.AiBackend);
         AdminStatusText.Text = RamTrimmer.IsRunningAsAdministrator()
             ? "Running as Administrator."
             : "Not admin - standby/QoS limited; working-set trim still works.";
@@ -725,8 +730,124 @@ public partial class MainWindow : Window
         _settings.DryRunCleanByDefault = DryRunCheck.IsChecked == true;
         _settings.AutoCleanupHostOnExit = AutoCleanupCheck.IsChecked == true;
         _settings.RestoreStartupsOnExit = RestoreStartupsCheck.IsChecked == true;
+        _settings.AiBackend = GetSelectedBackend();
+        _settings.LmStudioUrl = LmStudioUrlBox.Text?.Trim() ?? _settings.LmStudioUrl;
         _settings.Save(_paths);
         StatusText.Text = "Settings saved";
+    }
+
+    private void SelectBackendCombo(string backend)
+    {
+        foreach (ComboBoxItem item in AgentBackendCombo.Items)
+        {
+            if (string.Equals(item.Tag?.ToString(), backend, StringComparison.OrdinalIgnoreCase))
+            {
+                AgentBackendCombo.SelectedItem = item;
+                return;
+            }
+        }
+    }
+
+    private string GetSelectedBackend()
+    {
+        if (AgentBackendCombo.SelectedItem is ComboBoxItem { Tag: string tag })
+            return tag;
+        return "builtin";
+    }
+
+    private string GetSelectedTemplate()
+    {
+        if (AgentTemplateCombo.SelectedItem is ComboBoxItem { Tag: string tag })
+            return tag;
+        return "auto";
+    }
+
+    private void AgentBackendCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // no-op; Probe/Plan read selection live
+    }
+
+    private async void AgentProbe_Click(object sender, RoutedEventArgs e)
+    {
+        AgentBackendStatusText.Text = "Probing...";
+        var backend = GetSelectedBackend();
+        var url = LmStudioUrlBox.Text?.Trim() ?? _settings.LmStudioUrl;
+        var (ok, msg) = await _agent.ProbeBackendAsync(backend, url, _settings.AiPort);
+        AgentBackendStatusText.Text = msg;
+        StatusText.Text = ok ? "Backend OK" : "Backend down";
+    }
+
+    private async void AgentPlan_Click(object sender, RoutedEventArgs e)
+    {
+        var prompt = AgentPromptBox.Text?.Trim() ?? "";
+        if (prompt.Length == 0) return;
+
+        AgentLogBox.Text = "Planning with " + GetSelectedBackend() + "...\n";
+        AgentMetaText.Text = "Working...";
+        try
+        {
+            _lastAgentPlan = await Task.Run(async () =>
+                await _agent.PlanAsync(
+                    prompt,
+                    GetSelectedBackend(),
+                    LmStudioUrlBox.Text?.Trim() ?? _settings.LmStudioUrl,
+                    _settings.AiPort,
+                    GetSelectedTemplate()));
+
+            var sb = new StringBuilder();
+            sb.AppendLine("Backend: " + _lastAgentPlan.BackendUsed);
+            sb.AppendLine("Project: " + _lastAgentPlan.ProjectName);
+            sb.AppendLine("Template: " + _lastAgentPlan.Template);
+            sb.AppendLine("Summary: " + _lastAgentPlan.Summary);
+            sb.AppendLine();
+            sb.AppendLine("Files:");
+            foreach (var f in _lastAgentPlan.Files)
+                sb.AppendLine($"- {f.RelativePath} ({f.Content?.Length ?? 0} chars)");
+            if (_lastAgentPlan.NextSteps.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("Next:");
+                foreach (var s in _lastAgentPlan.NextSteps)
+                    sb.AppendLine("? " + s);
+            }
+            AgentLogBox.Text = sb.ToString();
+            AgentMetaText.Text = "Plan ready ? Create project de ghi vao Projects/";
+        }
+        catch (Exception ex)
+        {
+            AgentLogBox.Text = ex.Message;
+            AgentMetaText.Text = "Plan failed";
+        }
+    }
+
+    private void AgentCreate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_lastAgentPlan is null)
+        {
+            MessageBox.Show("Bam Plan truoc.", "Local Agent", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dry = AgentDryRunCheck.IsChecked == true;
+        var result = _agent.Execute(_lastAgentPlan, dry);
+        AgentMetaText.Text = result.Message;
+        AgentLogBox.AppendText(Environment.NewLine + Environment.NewLine + result.Message);
+        if (result.Ok && !dry && result.ProjectPath is not null)
+        {
+            var open = MessageBox.Show(
+                result.Message + "\n\nOpen folder?",
+                "Local Agent",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+            if (open == MessageBoxResult.Yes)
+                QuotaSaver.OpenUrl(result.ProjectPath);
+        }
+    }
+
+    private void AgentOpenProjects_Click(object sender, RoutedEventArgs e)
+    {
+        Directory.CreateDirectory(_agent.ProjectsRoot);
+        QuotaSaver.OpenUrl(_agent.ProjectsRoot);
     }
 
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
