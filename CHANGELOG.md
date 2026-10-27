@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- Host impact: analyze + **Safe eject** cleanup (stop llama from this drive, remove all `OptiForge_*` QoS, clear portable update temp)
+- Auto cleanup on exit (default on); optional restore startups on exit
+- Network: Remove ALL OptiForge QoS; Startup: Restore all from backup + drop empty OptiForge registry key
+- Playbook: Safe eject — dọn dấu vết host
+
 ## 0.2.0
 
 - AI: in-app **Download AI runtime+model** (llama-server + Qwen2.5 3B GGUF ~2GB)

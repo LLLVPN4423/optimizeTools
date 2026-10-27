@@ -1,0 +1,12 @@
+{
+  "id": "safe-eject",
+  "title": "Safe eject — dọn dấu vết host",
+  "steps": [
+    "Mở Settings → Scan host impact để xem QoS / startup backup / llama còn sót.",
+    "Bấm Safe eject (cleanup) — dừng llama từ ổ này, gỡ mọi policy OptiForge_*, xóa zip/temp trên ổ portable.",
+    "Nếu từng Disable startup: bật Restore startups on exit (hoặc Startup → Restore all) trước khi rút ổ.",
+    "Nếu còn QoS: chạy OptiForge as Administrator rồi Safe eject lại.",
+    "Đóng OptiForge, dùng Safely Remove Hardware / Eject — không rút nóng khi AI đang chạy.",
+    "RAM/standby chỉ ảnh hưởng khi app đang mở; sau khi đóng process, host không bị giữ lock bởi OptiForge."
+  ]
+}

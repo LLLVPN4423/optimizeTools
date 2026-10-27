@@ -12,6 +12,10 @@ public sealed class AppSettings
     public string PreferredModelTier { get; set; } = "fast"; // fast | quality | auto
     public bool DryRunCleanByDefault { get; set; } = true;
     public int MonitorIntervalMs { get; set; } = 1000;
+    /// <summary>On exit: stop llama from this drive + remove OptiForge QoS policies.</summary>
+    public bool AutoCleanupHostOnExit { get; set; } = true;
+    /// <summary>On exit: also restore startups disabled via OptiForge (default off — user intent).</summary>
+    public bool RestoreStartupsOnExit { get; set; } = false;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

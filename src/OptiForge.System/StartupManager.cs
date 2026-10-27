@@ -73,6 +73,48 @@ public sealed class StartupManager
         }
     }
 
+    public (int restored, string message) RestoreAllFromBackup(bool dryRun)
+    {
+        using var backup = Registry.CurrentUser.OpenSubKey(BackupPath, writable: true);
+        if (backup is null)
+            return (0, "No OptiForge startup backups.");
+
+        var names = backup.GetValueNames().ToList();
+        if (names.Count == 0)
+            return (0, "Startup backup key empty.");
+
+        if (dryRun)
+            return (names.Count, $"[Dry-run] Would restore {names.Count} startup entr(y/ies).");
+
+        var n = 0;
+        foreach (var name in names)
+        {
+            var (ok, _) = Enable(name, dryRun: false);
+            if (ok) n++;
+        }
+
+        return (n, $"Restored {n} startup entr(y/ies) to HKCU Run.");
+    }
+
+    public void TryRemoveEmptyOptiForgeKey()
+    {
+        try
+        {
+            using var backup = Registry.CurrentUser.OpenSubKey(BackupPath, writable: true);
+            if (backup is not null && backup.GetValueNames().Length == 0)
+            {
+                Registry.CurrentUser.DeleteSubKey(BackupPath, throwOnMissingSubKey: false);
+                using var parent = Registry.CurrentUser.OpenSubKey(@"Software\OptiForge", writable: true);
+                if (parent is not null && parent.GetSubKeyNames().Length == 0 && parent.GetValueNames().Length == 0)
+                    Registry.CurrentUser.DeleteSubKey(@"Software\OptiForge", throwOnMissingSubKey: false);
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
     private static IEnumerable<StartupEntry> ReadRunKey(RegistryKey root, string path, string hive, bool enabled)
     {
         using var key = root.OpenSubKey(path, writable: false);

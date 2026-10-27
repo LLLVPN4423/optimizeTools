@@ -3,7 +3,7 @@
 Portable Windows toolkit for an **external drive**: monitor · clean · RAM · local AI · network QoS · startup · tips · auto-update.
 
 **GitHub:** https://github.com/LLLVPN4423/optimizeTools  
-**Version:** 0.2.0
+**Version:** 0.2.1
 
 ## Requirements
 
@@ -32,7 +32,7 @@ Then in app → **AI** → **Download AI runtime+model** → **Start server** �
 | Network | Per-process KB/s limit via Windows QoS (admin) |
 | Startup | HKCU Run disable/enable with backup (debloat-lite) |
 | Tips | Offline playbooks |
-| Settings | Save prefs + check/apply GitHub update |
+| Settings | Host impact scan / **Safe eject**, prefs, GitHub update |
 
 ## Portable layout (≤10 GB with model)
 
@@ -55,6 +55,7 @@ optimizeTools/
 
 - Debloat is **startup-only** (no aggressive registry cleaner).  
 - Network throttle uses **QoS**, not WinDivert.  
+- Before unplugging: **Safe eject** (or close app with auto-cleanup) — stops llama from this drive, removes `OptiForge_*` QoS, clears portable update temp.  
 - Models/binaries are gitignored — stay on your drive.
 
 ## License

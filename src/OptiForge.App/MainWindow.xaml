@@ -64,8 +64,15 @@
               </StackPanel>
             </Border>
           </UniformGrid>
-          <TextBlock Grid.Row="1" TextWrapping="Wrap" Opacity="0.75"
-                     Text="Monitor realtime. Dùng tab Clean để thu hồi dung lượng an toàn (dry-run mặc định)."/>
+          <StackPanel Grid.Row="1">
+            <TextBlock TextWrapping="Wrap" Opacity="0.75"
+                       Text="Monitor realtime. Dùng tab Clean để thu hồi dung lượng an toàn (dry-run mặc định)."/>
+            <TextBlock Margin="0,10,0,0" TextWrapping="Wrap" Opacity="0.7" FontSize="12"
+                       Text="Trước khi rút ổ: Settings → Safe eject (cleanup) để dừng AI, gỡ QoS OptiForge_*, tránh process orphan trên host."/>
+            <Button Content="Safe eject (cleanup)" Click="SafeEject_Click"
+                    Margin="0,10,0,0" HorizontalAlignment="Left"
+                    ToolTip="Dừng llama từ ổ này + gỡ QoS + dọn temp. Không restore startup trừ khi bật trong Settings."/>
+          </StackPanel>
         </Grid>
       </TabItem>
 
@@ -183,6 +190,8 @@
                      ToolTip="KB/s (0 = gỡ limit)"/>
             <Button Content="Apply" Click="NetApply_Click"/>
             <Button Content="Remove limit" Click="NetRemove_Click"/>
+            <Button Content="Remove ALL OptiForge QoS" Click="NetRemoveAll_Click"
+                    ToolTip="Gỡ mọi policy OptiForge_* trên host (nên admin)"/>
           </StackPanel>
           <TextBlock x:Name="NetStatusText" Margin="0,12,0,0" TextWrapping="Wrap"/>
         </StackPanel>
@@ -214,6 +223,8 @@
             <Button Content="Refresh" Click="StartupRefresh_Click"/>
             <Button Content="Disable selected" Click="StartupDisable_Click"/>
             <Button Content="Enable selected" Click="StartupEnable_Click"/>
+            <Button Content="Restore all" Click="StartupRestoreAll_Click"
+                    ToolTip="Bật lại mọi startup đã tắt qua OptiForge và xóa key backup rỗng"/>
             <TextBlock x:Name="StartupStatusText" Margin="12,0,0,0" VerticalAlignment="Center" Opacity="0.85"/>
           </StackPanel>
         </Grid>
@@ -239,18 +250,34 @@
       </TabItem>
 
       <TabItem Header="Settings">
-        <StackPanel Margin="8">
-          <TextBlock Text="Settings" FontSize="16" FontWeight="SemiBold"/>
-          <TextBlock x:Name="SettingsPathText" Margin="0,8,0,0" Opacity="0.7" TextWrapping="Wrap"/>
-          <TextBlock x:Name="VersionText" Margin="0,4,0,0" Opacity="0.7"/>
-          <Button Content="Save settings" Click="SaveSettings_Click" Margin="0,12,0,0" HorizontalAlignment="Left"/>
-          <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-            <Button Content="Check updates" Click="CheckUpdates_Click"/>
-            <Button Content="Download + apply update" Click="ApplyUpdate_Click"
-                    ToolTip="Tải OptiForge-win-*.zip từ GitHub Releases rồi restart"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="8">
+            <TextBlock Text="Settings" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock x:Name="SettingsPathText" Margin="0,8,0,0" Opacity="0.7" TextWrapping="Wrap"/>
+            <TextBlock x:Name="VersionText" Margin="0,4,0,0" Opacity="0.7"/>
+
+            <TextBlock Text="Host impact (portable drive)" FontSize="14" FontWeight="SemiBold" Margin="0,16,0,0"/>
+            <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Opacity="0.75" FontSize="12"
+                       Text="Khi rút ổ: process/QoS/registry trên PC host có thể còn lại. Auto-cleanup khi đóng app mặc định bật."/>
+            <CheckBox x:Name="AutoCleanupCheck" Content="Auto cleanup on exit (stop llama + remove OptiForge QoS)"
+                      IsChecked="True" Margin="0,10,0,0" Foreground="#FFE8EAED"/>
+            <CheckBox x:Name="RestoreStartupsCheck" Content="Also restore disabled startups on exit"
+                      IsChecked="False" Margin="0,6,0,0" Foreground="#FFE8EAED"/>
+            <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+              <Button Content="Scan host impact" Click="ScanHostImpact_Click"/>
+              <Button Content="Safe eject (cleanup)" Click="SafeEject_Click"/>
+            </StackPanel>
+            <TextBlock x:Name="HostImpactText" Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.85"/>
+
+            <Button Content="Save settings" Click="SaveSettings_Click" Margin="0,16,0,0" HorizontalAlignment="Left"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Button Content="Check updates" Click="CheckUpdates_Click"/>
+              <Button Content="Download + apply update" Click="ApplyUpdate_Click"
+                      ToolTip="Tải OptiForge-win-*.zip từ GitHub Releases rồi restart"/>
+            </StackPanel>
+            <TextBlock x:Name="UpdateText" Margin="0,12,0,0" TextWrapping="Wrap" Opacity="0.8"/>
           </StackPanel>
-          <TextBlock x:Name="UpdateText" Margin="0,12,0,0" TextWrapping="Wrap" Opacity="0.8"/>
-        </StackPanel>
+        </ScrollViewer>
       </TabItem>
     </TabControl>
   </DockPanel>

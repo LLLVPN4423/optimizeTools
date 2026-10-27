@@ -24,10 +24,12 @@ public partial class MainWindow : Window
     private readonly AiBootstrapper _aiSetup;
     private readonly NetworkThrottle _net = new();
     private readonly StartupManager _startup = new();
+    private readonly HostCleanupService _hostCleanup;
     private readonly DispatcherTimer _timer;
     private readonly ObservableCollection<CleanRow> _cleanRows = [];
     private readonly ObservableCollection<Playbook> _playbooks = [];
     private bool _cleanBusy;
+    private bool _exitCleanupDone;
 
     public MainWindow()
     {
@@ -38,10 +40,13 @@ public partial class MainWindow : Window
         _ai = new LocalAiService(_paths, _settings);
         _autoUpdater = new AutoUpdater(_paths);
         _aiSetup = new AiBootstrapper(_paths);
+        _hostCleanup = new HostCleanupService(_paths);
 
         RootPathText.Text = "Root: " + _paths.Root;
         SettingsPathText.Text = "Settings: " + _paths.SettingsPath;
         DryRunCheck.IsChecked = _settings.DryRunCleanByDefault;
+        AutoCleanupCheck.IsChecked = _settings.AutoCleanupHostOnExit;
+        RestoreStartupsCheck.IsChecked = _settings.RestoreStartupsOnExit;
         AdminStatusText.Text = RamTrimmer.IsRunningAsAdministrator()
             ? "Running as Administrator."
             : "Not admin ? standby/QoS limited; working-set trim still works.";
@@ -77,12 +82,40 @@ public partial class MainWindow : Window
         _timer.Tick += (_, _) => RefreshMonitor();
         _timer.Start();
 
+        Closing += OnWindowClosing;
         Closed += async (_, _) =>
         {
             _timer.Stop();
             _monitor.Dispose();
             await _ai.DisposeAsync();
         };
+    }
+
+    private void OnWindowClosing(object? sender, CancelEventArgs e)
+    {
+        if (_exitCleanupDone) return;
+        _exitCleanupDone = true;
+        _timer.Stop();
+
+        try
+        {
+            // Always stop AI we own; then optional host-side cleanup.
+            _ai.StopServerAsync().GetAwaiter().GetResult();
+        }
+        catch { /* ignore */ }
+
+        if (_settings.AutoCleanupHostOnExit)
+        {
+            try
+            {
+                _hostCleanup.CleanupForEject(
+                    removeQos: true,
+                    restoreStartups: _settings.RestoreStartupsOnExit,
+                    clearPortableTemp: true,
+                    killLlamaFromOurRuntime: true);
+            }
+            catch { /* best-effort */ }
+        }
     }
 
     private void RefreshMonitor()
@@ -249,6 +282,12 @@ public partial class MainWindow : Window
         NetStatusText.Text = result.Message;
     }
 
+    private void NetRemoveAll_Click(object sender, RoutedEventArgs e)
+    {
+        var (_, msg) = _net.RemoveAllOptiForgePolicies();
+        NetStatusText.Text = msg;
+    }
+
     private void RefreshStartupList()
     {
         StartupList.ItemsSource = _startup.ListUserStartup().ToList();
@@ -282,6 +321,65 @@ public partial class MainWindow : Window
         var (ok, msg) = _startup.Enable(entry.Name, dry);
         StartupStatusText.Text = msg;
         if (ok && !dry) RefreshStartupList();
+    }
+
+    private void StartupRestoreAll_Click(object sender, RoutedEventArgs e)
+    {
+        var dry = StartupDryRunCheck.IsChecked == true;
+        var (_, msg) = _startup.RestoreAllFromBackup(dry);
+        if (!dry)
+            _startup.TryRemoveEmptyOptiForgeKey();
+        StartupStatusText.Text = msg;
+        RefreshStartupList();
+    }
+
+    private void ScanHostImpact_Click(object sender, RoutedEventArgs e)
+    {
+        var report = _hostCleanup.AnalyzeCurrentImpact();
+        HostImpactText.Text = FormatHostReport(report);
+        StatusText.Text = "Host impact scanned";
+    }
+
+    private async void SafeEject_Click(object sender, RoutedEventArgs e)
+    {
+        var restore = RestoreStartupsCheck.IsChecked == true;
+        var confirm = MessageBox.Show(
+            "Safe eject cleanup:\n" +
+            "? Stop llama from this drive\n" +
+            "? Remove all OptiForge_* QoS policies\n" +
+            "? Clear update temp on portable data\n" +
+            (restore ? "? Restore disabled startups\n" : "? Keep startup changes (not restoring)\n") +
+            "\nContinue?",
+            "OptiForge Safe eject",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            await _ai.StopServerAsync();
+        }
+        catch { /* ignore */ }
+
+        var report = await Task.Run(() => _hostCleanup.CleanupForEject(
+            removeQos: true,
+            restoreStartups: restore,
+            clearPortableTemp: true,
+            killLlamaFromOurRuntime: true));
+
+        HostImpactText.Text = FormatHostReport(report);
+        StatusText.Text = "Safe eject cleanup done";
+        MessageBox.Show(report.Summary, "OptiForge Safe eject", MessageBoxButton.OK, MessageBoxImage.Information);
+        RefreshStartupList();
+        await RefreshAiStatusAsync();
+    }
+
+    private static string FormatHostReport(HostImpactReport report)
+    {
+        var lines = new List<string> { report.Summary };
+        lines.AddRange(report.Actions);
+        lines.AddRange(report.Warnings.Select(w => "? " + w));
+        return string.Join("\n", lines);
     }
 
     private async void ScanClean_Click(object sender, RoutedEventArgs e)
@@ -374,6 +472,8 @@ public partial class MainWindow : Window
     private void SaveSettings_Click(object sender, RoutedEventArgs e)
     {
         _settings.DryRunCleanByDefault = DryRunCheck.IsChecked == true;
+        _settings.AutoCleanupHostOnExit = AutoCleanupCheck.IsChecked == true;
+        _settings.RestoreStartupsOnExit = RestoreStartupsCheck.IsChecked == true;
         _settings.Save(_paths);
         StatusText.Text = "Settings saved";
     }

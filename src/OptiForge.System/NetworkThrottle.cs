@@ -92,6 +92,36 @@ public sealed class NetworkThrottle
         return output.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
+    /// <summary>Removes every OptiForge_* QoS policy from the host.</summary>
+    public (int removed, string message) RemoveAllOptiForgePolicies()
+    {
+        var names = ListOptiForgePolicies();
+        if (names.Count == 0)
+            return (0, "No OptiForge QoS policies to remove.");
+
+        if (!RamTrimmer.IsRunningAsAdministrator())
+        {
+            // Still try — some policies may be removable without elevation depending on how created
+        }
+
+        var removed = 0;
+        foreach (var name in names)
+        {
+            var safe = name.Replace("'", "''");
+            var (code, _) = RunPs($"Remove-NetQosPolicy -Name '{safe}' -Confirm:$false -ErrorAction SilentlyContinue");
+            if (code == 0) removed++;
+        }
+
+        var left = ListOptiForgePolicies();
+        if (left.Count > 0)
+        {
+            return (removed,
+                $"Removed {removed} QoS policy(ies); {left.Count} remain — run OptiForge as Administrator to finish.");
+        }
+
+        return (removed, $"Removed {removed} OptiForge QoS policy(ies) from host.");
+    }
+
     private static (int exitCode, string output) RunPs(string command)
     {
         var psi = new ProcessStartInfo
